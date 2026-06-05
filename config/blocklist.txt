@@ -1,0 +1,17 @@
+# Blocklist — účty, které se z katalogu VŽDY vyřadí (jeden handle na řádek; # = komentář).
+#
+# K čemu:
+#   - žádost vlastníka o odstranění (viz patička webu „napiš na @zpravobot"),
+#   - spam / nevhodné / omylem zařazené účty.
+#
+# Formát:  username@instance
+# Chování update_catalog.rb:
+#   - odstraní účet z katalogu (zmizí z data.json při příštím zápisu),
+#   - nikdy ho znovu nepřidá (vyřadí z kandidátů i z manual_accounts.txt),
+#   - má přednost před manual_accounts.txt.
+#
+# Přežije rebuild data.json i re-discovery. Override cesty: BLOCKLIST_FILE=/cesta/jine.txt
+#
+# Příklad (odkomentuj a uprav):
+# spammer@nejakainstance.cz
+# nechcetubyt@witter.cz

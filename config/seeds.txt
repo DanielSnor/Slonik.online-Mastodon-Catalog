@@ -1,0 +1,14 @@
+# Seed účty pro discover_accounts.rb — objevování ze sociálního grafu.
+#
+# Formát:  username@home_instance   directions
+#   directions = followers | following | followers,following
+#   (oddělené čárkou, bez mezer; default = followers)
+#
+# Override cesty: SEEDS_FILE=/cesta/jine.txt
+#
+# Tip: přidej účty, které sledují hodně reálných CZ/SK lidí (kurátory, hashtag
+# boty, výrazné osobnosti). Hloubka je 1 úroveň, boti se vyřadí, dedup automatický.
+
+zpravobot@zpravobot.news       followers
+danielsnor@mastodon.social     followers,following
+medvidekpu@mastodon.social     followers

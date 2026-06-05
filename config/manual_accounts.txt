@@ -1,0 +1,19 @@
+# Ruční zařazení účtů do katalogu — jeden handle na řádek (# = komentář).
+#
+# K čemu: účty, které chceš v katalogu NAPEVNO, i když by je automatika vynechala
+# — typicky BOTY (objevování boty vyřazuje) nebo účty mimo CZ/SK filtr.
+#
+# Formát:  username@instance
+# Chování update_catalog.rb:
+#   - obejde CZ/SK filtr i vyřazení botů (vynucené zařazení),
+#   - udělá lookup + AI kategorizaci (rodina/tagy/popis) jako u běžných účtů,
+#   - označí záznam bot: true (frontend ukáže badge „Automat"),
+#   - při každém běhu refreshne metriky vč. last_status_at (takže neaktivní bot
+#     se skryje a po publikaci se zase objeví, jako u ostatních účtů).
+#
+# Přežije i rebuild data.json od nuly (přidá se znovu při příštím běhu).
+# Override cesty: MANUAL_FILE=/cesta/jine.txt
+#
+# Příklad (odkomentuj a uprav):
+# zpravobot@zpravobot.news
+# pocasimb@mastodonczech.cz

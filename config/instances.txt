@@ -1,0 +1,45 @@
+# CZ/SK Mastodon instance — jedna doména na řádek (# = komentář).
+#
+# Použití:
+#   - discover_accounts.rb scrapuje /api/v1/directory každé z nich
+#     (= lokální účty, i ty mimo seed graf) — viz seeds.txt pro graf.
+#   - ai_categorize.rb (dávková diagnostika) jede taky z tohoto seznamu.
+#
+# Override cesty: INSTANCES_FILE=/cesta/jine.txt
+# Edituj volně — instance bez directory / mrtvé se jen přeskočí (zaloguje).
+# Pozn.: build_instances.rb umí fallback — když doména nevrací API, zkusí
+#        ještě mastodon.<doména> (proto stačí uvádět holou doménu, pokud běží
+#        Mastodon na subdoméně mastodon.*).
+#
+# Komentář u řádku: "CZ profilů / celkem na serveru" (zdroj: ruční audit).
+
+# --- české instance (dle počtu CZ profilů) ---
+mastodonczech.cz          # 715 / 5115
+cztwitter.cz              # 230 / 769
+witter.cz                 # 216 / 1380
+mastodon.pirati.cz        # 52 / 363
+mamutovo.cz               # ~41 (z discovery)
+f.cz                      # 41 / 93
+mastodon.rozhlas.cz       # Český rozhlas (dříve chybně rozhlas.cz)
+boskovice.social          # 5 / 25
+kompost.cz                # 2 (z discovery)
+
+# --- slovenské instance ---
+mastodon.sk               # ryze SK, directory zapnutý
+
+# --- menší / single-user / ostatní software (pixelfed, snac) ---
+pixelfed.cz               # pixelfed
+snac.lab8.cz              # snac
+mastodon.skorpil.cz       # (dříve chybně skorpil.cz)
+mastodon.macsnet.cz
+onqasarch.cz
+mastodon.morwud.cz
+rodina-sucha.cz
+mastodon.starnet.cz
+toot.whatever.cz
+
+# --- odebráno (2026-06, ruční audit) ---
+# nomu.sk, petrzprahy.cz, cynikobecny.cz   — doména není registrovaná
+# masto.den1.cz, mastodon.arch-linux.cz    — instance zrušena
+# mastodon.gmb.cz, mastodon.cxm.cz         — instance zřejmě zrušena (cert/CF chyba)
+# fediverse.cz                             — jen zaparkovaná doména

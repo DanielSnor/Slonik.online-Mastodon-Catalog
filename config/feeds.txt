@@ -1,0 +1,12 @@
+# „Obsahové" instance — indexují se do VYHLEDÁVÁNÍ a POSTŮ (vč. botů), ale
+# NEDOLUJÍ se do katalogu (Účty) a discover je ignoruje.
+#
+# Určeno pro velké bot/feed instance (RSS/zprávy), které tvoří hodně trafficu,
+# ale jejich účty nepatří do kurátorského katalogu osob/organizací.
+#
+# Pozn.: kvůli objemu se feeds indexují do search.json s KRATŠÍ retencí
+#        (FEEDS_RETENTION_DAYS, default 7 dní) než běžné instance (30 dní).
+#
+# Jedna doména na řádek (# = komentář). Override: FEEDS_FILE=/cesta/jine.txt
+
+zpravobot.news

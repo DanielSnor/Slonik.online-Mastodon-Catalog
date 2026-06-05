@@ -1,0 +1,53 @@
+# ==================================
+# Sloník.online (Mastodon katalog) — Cloudron crontab
+# ==================================
+#
+# Vlož tyto řádky do Cloudron crontabu dané appky (NE klasický `crontab -e`).
+# Wrappery (collect.sh / build-search.sh / …) samy přejdou do kořene projektu
+# (cd "$(dirname "$0")") a zavolají ruby bin/<skript>.
+#
+# LOGOVÁNÍ: skripty si přesměrování řeší samy — když běží z cronu (bez terminálu),
+# zapisují do logs/<jméno>.log; spuštěné ručně píšou na obrazovku. Proto cron řádky
+# NEobsahují `>> logs/… 2>&1`. (Sledování:  tail -f /app/data/slonik/logs/update.log)
+#
+# ČASOVÁ ZÓNA — DŮLEŽITÉ:
+#   Cloudron cron běží v LOKÁLNÍM čase kontejneru (CET/CEST = UTC+1/+2), CRON_TZ
+#   se neuplatní. Skripty ale počítají den/týden v UTC (collect --yesterday =
+#   předchozí UZAVŘENÝ UTC den). Časy níže jsou proto zvolené tak, aby denní collect
+#   běžel TĚSNĚ PO UTC půlnoci v obou režimech DST (02:15 lokálně = 00:15 UTC v létě,
+#   01:15 UTC v zimě) — tím se sbírá právě uzavřený den (lag ~15 min, ne ~22 h) a
+#   pondělní konsolidace má kompletní týden Po–Ne (včetně neděle).
+#
+# POŘADÍ pondělních jobů je závislé: collect (02:15) → consolidate (03:15) →
+# discover (04:15) → update (05:15) → refresh-instances (06:00). Consolidate musí
+# běžet AŽ PO pondělním collectu (ten teprve sesbírá neděli).
+#
+# Na cronu běží POUZE PROD. Test se nebuilduje paralelně — data se do něj kopírují
+# z produkce ručně:  ./scripts/sync_data_to_test.sh
+
+# ───────────────────────── DENNĚ ─────────────────────────
+
+# Sběr postů — 02:15 lokálně (= těsně po UTC půlnoci) za PŘEDCHOZÍ uzavřený UTC den.
+15 2 * * *      /app/data/slonik/collect.sh --yesterday
+
+# Index vyhledávání — každých 6 h. Přírůstkově: lokální timeline CZ/SK instancí +
+# feeds (boti) + katalogové účty na nedostupných instancích → search.json +
+# users.json + status.json, upload. (Plný rebuild ručně: ./build-search.sh --rebuild)
+0 2,8,14,20 * * *  /app/data/slonik/build-search.sh
+
+# ────────────────── TÝDNĚ (pondělí, v pořadí) ─────────────
+
+# Konsolidace postů minulého týdne → web/posts.json (až po pondělním collectu).
+15 3 * * 1      /app/data/slonik/consolidate.sh
+
+# Objevování účtů z instancí + sociálního grafu (zdarma).
+15 4 * * 1      /app/data/slonik/discover.sh
+
+# Aktualizace katalogu (PO discovery): refresh aktivity + týdenní přírůstky
+# (followers/activity delta), dokategorizace NOVÝCH účtů, dedup, vyřazení botů, upload.
+15 5 * * 1      /app/data/slonik/update.sh
+
+# Přehled + zaměření instancí v JEDNOM kroku (PO update): build (lokálně) →
+# classify (joinmastodon + AI) → build (zapeče kategorie + upload). Tím dostane
+# i nově přidaná instance „Oblast" hned. AI klíč z ~/.anthropic_key.
+0 6 * * 1       /app/data/slonik/refresh-instances.sh

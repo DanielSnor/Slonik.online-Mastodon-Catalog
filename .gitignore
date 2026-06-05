@@ -1,0 +1,26 @@
+# Tajemství — NIKDY necommitovat
+config.env
+scripts/deploy.env
+*.key
+.anthropic_key
+
+# Provozní / generované soubory — všechny JSON ve web/ a data/ se generují
+# pipeline (katalog, žebříčky, indexy, stavové soubory, kandidáti…).
+web/*.json
+data/*.json
+data/posts_*.jsonl
+data/ai_results.jsonl
+
+# Zálohy + logy
+*.bak
+log/
+logs/
+run.log
+
+# Starý proof-of-concept / lokální nástroje — do repa nepatří
+archiv/
+.claude/
+.nova/
+
+# macOS
+.DS_Store

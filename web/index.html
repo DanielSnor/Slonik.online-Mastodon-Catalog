@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sloník — Mastodon katalog</title>
+  <meta name="description" content="Sloník — Mastodon katalog. Objev české a slovenské uživatele na Mastodonu. PoC maketa.">
+  <link rel="canonical" href="https://katalog-test.zpravobot.news/">
+
+  <!-- Open Graph / sdílení (Mastodon, Facebook, …) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sloník — Mastodon katalog">
+  <meta property="og:title" content="Sloník — Mastodon katalog">
+  <meta property="og:description" content="Objev české a slovenské uživatele na Mastodonu. PoC maketa.">
+  <meta property="og:url" content="https://katalog-test.zpravobot.news/">
+  <meta property="og:image" content="https://katalog-test.zpravobot.news/header.jpg">
+  <meta property="og:image:width" content="1536">
+  <meta property="og:image:height" content="1024">
+  <meta property="og:image:alt" content="Sloník čte knihu Mastodon katalog">
+  <meta property="og:locale" content="cs_CZ">
+
+  <!-- Twitter / X card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sloník — Mastodon katalog">
+  <meta name="twitter:description" content="Objev české a slovenské uživatele na Mastodonu. PoC maketa.">
+  <meta name="twitter:image" content="https://katalog-test.zpravobot.news/header.jpg">
+
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-updated="2026-05-31">
+  <header class="site-header">
+    <div class="hero">
+      <button class="hero-link" id="hero-home" type="button" aria-label="Zobrazit všechny zdroje">
+        <img class="hero-img" src="header.jpg" width="1536" height="1024"
+             alt="Sloník čte knihu Mastodon katalog">
+      </button>
+      <div class="hero-overlay hero-overlay-tl">
+        <h1><span class="brand-prefix"><span class="brand-name">Sloník</span><span class="brand-tld">.online</span></span> <span class="brand-domain" data-i18n="brand_domain">CZ | SK Mastodon katalog</span></h1>
+        <p class="claim" data-i18n="claim">Objev české a slovenské uživatele na Mastodonu</p>
+      </div>
+      <a class="hero-overlay hero-overlay-br main-account"
+         href="https://slonik.online"
+         target="_blank" rel="noopener">Slonik.online</a>
+    </div>
+  </header>
+
+  <nav class="navbar" id="navbar" aria-label="Navigace">
+    <div class="navbar-inner">
+      <button class="navbar-burger" id="sidebar-toggle" type="button"
+              aria-expanded="false" aria-controls="sidebar-body" aria-label="Menu">
+        <span class="burger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="burger-label" id="sidebar-toggle-label">Menu</span>
+      </button>
+      <div class="navbar-views" id="view-switch" aria-label="Pohled / View">
+        <button type="button" class="navbar-link" data-view="search" data-i18n="view_search">Vyhledávání</button>
+        <button type="button" class="navbar-link" data-view="instance" data-i18n="view_instance">Instance</button>
+        <button type="button" class="navbar-link" data-view="ucty" data-i18n="view_accounts">Účty</button>
+        <button type="button" class="navbar-link" data-view="posty" data-i18n="view_posts">Posty</button>
+        <button type="button" class="navbar-link" data-view="odkazy" data-i18n="view_links">Odkazy</button>
+        <button type="button" class="navbar-link" data-view="about" data-i18n="view_about">O Sloníku</button>
+      </div>
+      <div class="lang-switch navbar-lang" id="lang-switch" aria-label="Jazyk / Language">
+        <button type="button" data-lang="cs">CZ</button>
+        <span class="lang-sep" aria-hidden="true">|</span>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+    </div>
+  </nav>
+
+  <nav class="tabs" id="tabs" aria-label="Řezy katalogu">
+    <button class="tab is-active" data-slice="all" data-i18n="nav_all">Vše</button>
+    <span class="tab-sep" data-i18n="nav_charts">Žebříčky</span>
+    <button class="tab" data-slice="top:followers:10" data-i18n="nav_top10_foll">Top 10 sledovaných</button>
+    <button class="tab" data-slice="top:active:10" data-i18n="nav_top10_active">Top 10 aktivních</button>
+    <button class="tab" data-slice="top:followers:50" data-i18n="nav_top50_foll">Top 50 sledovaných</button>
+    <button class="tab" data-slice="top:active:50" data-i18n="nav_top50_active">Top 50 aktivních</button>
+    <span class="tab-sep" data-i18n="nav_risers">Skokani týdne</span>
+    <button class="tab" data-slice="top:gain_followers:10" data-i18n="nav_risers_foll">V sledujících</button>
+    <button class="tab" data-slice="top:gain_activity:10" data-i18n="nav_risers_active">V aktivitě</button>
+    <span class="tab-sep" data-i18n="nav_new">Novinky</span>
+    <button class="tab" data-slice="recent" data-i18n="nav_recent">Nedávno přidané</button>
+    <p class="tabs-count"><strong id="visible-count">538</strong> <span data-i18n="count_of">z</span> <span id="total-count">538</span> <span data-i18n="count_sources">zdrojů</span></p>
+  </nav>
+
+  <nav class="tabs" id="posts-tabs" aria-label="Řezy postů" hidden>
+    <button class="tab is-active" data-ptab="all" data-i18n="nav_all">Vše</button>
+    <span class="tab-sep" data-i18n="nav_charts">Žebříčky</span>
+    <button class="tab" data-ptab="10">Top 10</button>
+    <button class="tab" data-ptab="50">Top 50</button>
+    <span class="tab-sep" data-i18n="nav_risers">Skokani týdne</span>
+    <button class="tab" data-ptab="risers_ratio" data-i18n="prisers_ratio">Poměrem</button>
+    <button class="tab" data-ptab="risers_abs" data-i18n="prisers_abs">Dosahem</button>
+    <p class="tabs-count" id="posts-meta"></p>
+  </nav>
+
+  <nav class="tabs" id="instance-tabs" aria-label="Řezy instancí" hidden>
+    <button class="tab is-active" data-itab="all" data-i18n="nav_all">Vše</button>
+    <span class="tab-sep" data-i18n="nav_charts">Žebříčky</span>
+    <button class="tab" data-itab="10">Top 10</button>
+    <button class="tab" data-itab="50">Top 50</button>
+    <span class="tab-sep" data-i18n="irank_activity">Aktivita instance</span>
+    <button class="tab" data-itab="ratio" data-i18n="irank_ratio">Poměrem</button>
+    <button class="tab" data-itab="volume" data-i18n="irank_volume">Objemem</button>
+    <p class="tabs-count" id="instance-meta"></p>
+  </nav>
+
+  <nav class="tabs" id="search-tabs" aria-label="Řezy výsledků" hidden>
+    <button class="tab is-active" data-stab="all" data-i18n="nav_all">Vše</button>
+    <span class="tab-sep" data-i18n="nav_charts">Žebříčky</span>
+    <button class="tab" data-stab="10">Top 10</button>
+    <button class="tab" data-stab="50">Top 50</button>
+    <span class="tab-sep" data-i18n="nav_risers">Skokani týdne</span>
+    <button class="tab" data-stab="risers_ratio" data-i18n="prisers_ratio">Poměrem</button>
+    <button class="tab" data-stab="risers_abs" data-i18n="prisers_abs">Dosahem</button>
+    <p class="tabs-count" id="search-meta"></p>
+  </nav>
+
+  <nav class="tabs" id="links-tabs" aria-label="Odkazy" hidden>
+    <p class="tabs-count" id="links-meta"></p>
+  </nav>
+
+  <main class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-body" id="sidebar-body">
+        <nav class="filter-group views-nav" id="views-nav" aria-label="Pohledy">
+          <h2 data-i18n="nav_views">Pohledy</h2>
+          <div class="filter-buttons">
+            <button type="button" class="filter-chip view-link" data-view="search" data-i18n="view_search">Vyhledávání</button>
+            <button type="button" class="filter-chip view-link" data-view="instance" data-i18n="view_instance">Instance</button>
+            <button type="button" class="filter-chip view-link" data-view="ucty" data-i18n="view_accounts">Účty</button>
+            <button type="button" class="filter-chip view-link" data-view="posty" data-i18n="view_posts">Posty</button>
+            <button type="button" class="filter-chip view-link" data-view="odkazy" data-i18n="view_links">Odkazy</button>
+            <button type="button" class="filter-chip view-link" data-view="about" data-i18n="view_about">O Sloníku</button>
+          </div>
+        </nav>
+        <div class="filter-group slices-heading" id="slices-heading">
+          <h2 data-i18n="nav_slices">Rychlé filtry</h2>
+        </div>
+        <section class="filter-group search-nav" id="accounts-nav" hidden aria-label="Účty">
+          <h2 data-i18n="accounts_nav_title">Účty</h2>
+          <p class="search-nav-desc" data-i18n="accounts_nav_desc">Katalog českých a slovenských účtů na Mastodonu. Filtruj podle oblasti, typu, jazyka a tagů, vyhledávej podle jména nebo handle a řaď podle počtu sledujících či aktivity. Kliknutím na účet zobrazíš detail.</p>
+        </section>
+
+        <section class="filter-group search-nav" id="posts-nav" hidden aria-label="Posty">
+          <h2 data-i18n="posts_nav_title">Posty</h2>
+          <p class="search-nav-desc" data-i18n="posts_nav_desc">Nejlepší příspěvky českých a slovenských účtů za poslední týden. Přepínej žebříčky (Top 10/50, skokani týdne), filtruj podle oblasti, textu a hashtagů a řaď podle boostů, oblíbených nebo data.</p>
+        </section>
+
+        <section class="filter-group search-nav" id="search-nav" hidden aria-label="Vyhledávání">
+          <h2 data-i18n="view_search">Vyhledávání</h2>
+          <p class="search-nav-desc" data-i18n="search_nav_desc">Hledá v účtech i příspěvcích českého a slovenského Mastodonu. Nezáleží na velikosti písmen ani diakritice (napíšeš „bouzkova", najde „Bouzková"), hledá napříč všemi instancemi naráz a bez přihlášení. Výsledky jsou z posledních týdnů.</p>
+        </section>
+
+        <section class="filter-group search-nav" id="instance-nav" hidden aria-label="Instance">
+          <h2 data-i18n="instance_nav_title">Instance</h2>
+          <p class="search-nav-desc" data-i18n="instance_nav_desc">České a slovenské Mastodon instance — kde si můžeš založit účet a koho tam najdeš. U každé je velikost, aktivita, stav registrací a kolik je tam účtů z tohoto katalogu. Seřazeno podle velikosti.</p>
+        </section>
+
+        <section class="filter-group search-nav" id="links-nav" hidden aria-label="Odkazy">
+          <h2 data-i18n="links_nav_title">Odkazy</h2>
+          <p class="search-nav-desc" data-i18n="links_nav_desc">Kurátorovaný rozcestník kvalitních článků a návodů o Mastodonu a fediverse — česky i anglicky. Filtruj podle typu a jazyka.</p>
+        </section>
+
+        <section class="filter-group filter-group-links" id="links-type-group" data-filter="links-type" hidden>
+          <h2 data-i18n="links_head_type">Typ</h2>
+          <div class="filter-buttons">
+            <button class="filter-chip" data-ltype="explainer" data-i18n="ltype_explainer">Vysvětlení</button>
+            <button class="filter-chip" data-ltype="navod" data-i18n="ltype_navod">Návody</button>
+            <button class="filter-chip" data-ltype="provozovatel" data-i18n="ltype_provozovatel">Pro provozovatele</button>
+            <button class="filter-chip" data-ltype="kontext" data-i18n="ltype_kontext">Kontext</button>
+          </div>
+        </section>
+
+        <section class="filter-group filter-group-links" id="links-lang-group" data-filter="links-lang" hidden>
+          <h2 data-i18n="head_language">Jazyk</h2>
+          <div class="filter-buttons">
+            <button class="filter-chip" data-llang="cs" data-i18n="lang_cs">Čeština</button>
+            <button class="filter-chip" data-llang="en" data-i18n="lang_en">English</button>
+          </div>
+        </section>
+
+        <nav class="filter-group about-nav" id="about-nav" data-filter="about" hidden aria-label="O Sloníku">
+          <h2 data-i18n="about_menu_about">O Sloníku</h2>
+          <p class="search-nav-desc" data-i18n="about_menu_about_desc">Sloník je katalog českých a slovenských uživatelů sítě Mastodon. Pomáhá najít zajímavé lidi, média i instituce z našeho prostoru — napříč všemi servery (instancemi), bez ohledu na to, kde mají účet.</p>
+          <div class="filter-buttons">
+            <button class="filter-chip about-link active" data-about="about" data-i18n="about_nav_about">O Sloníku</button>
+          </div>
+
+          <h2 data-i18n="about_menu_howto">Jak pracovat</h2>
+          <p class="search-nav-desc" data-i18n="about_menu_howto_desc">Několik tipů, jak co nejlépe využít možností, které Sloník.online poskytuje pro práci s:</p>
+          <div class="filter-buttons">
+            <button class="filter-chip about-link" data-about="search" data-i18n="about_nav_search">Vyhledáváním</button>
+            <button class="filter-chip about-link" data-about="instance" data-i18n="about_nav_instance">Instancemi</button>
+            <button class="filter-chip about-link" data-about="accounts" data-i18n="about_nav_accounts">Účty</button>
+            <button class="filter-chip about-link" data-about="posts" data-i18n="about_nav_posts">Posty</button>
+            <button class="filter-chip about-link" data-about="links" data-i18n="about_nav_links_howto">Odkazy</button>
+          </div>
+
+          <h2 data-i18n="about_menu_other">Ostatní</h2>
+          <p class="search-nav-desc" data-i18n="about_menu_other_desc">A nakonec několik závěrečných informací — časté dotazy, technické pozadí, o autorovi a jak projekt podpořit.</p>
+          <div class="filter-buttons">
+            <button class="filter-chip about-link" data-about="faq" data-i18n="about_nav_faq">FAQ</button>
+            <button class="filter-chip about-link" data-about="tech" data-i18n="about_nav_tech">Technické řešení</button>
+            <button class="filter-chip about-link" data-about="author" data-i18n="about_nav_author">O autorovi</button>
+          </div>
+        </nav>
+
+        <div class="filter-search">
+          <label for="search" data-i18n="search_label">Vyhledat</label>
+          <input type="search" id="search" placeholder="Jméno nebo handle…" data-i18n-ph="search_ph" autocomplete="off">
+        </div>
+
+        <div class="filter-sort">
+          <label for="sort" data-i18n="sort_label">Řadit</label>
+          <select id="sort">
+            <option value="name" data-i18n="sort_name">Abecedně</option>
+            <option value="followers" data-i18n="sort_followers">Nejvíc sledujících</option>
+            <option value="posts" data-i18n="sort_posts">Nejaktivnější</option>
+            <option value="added" data-i18n="sort_added">Nejnověji přidané</option>
+          </select>
+        </div>
+
+        <div class="filter-sort filter-sort-posts" id="posts-sort-wrap" hidden>
+          <label for="posts-sort-select" data-i18n="sort_label">Řadit</label>
+          <select id="posts-sort-select">
+            <option value="date_asc" data-i18n="psort_date_asc">Od nejstaršího</option>
+            <option value="date" data-i18n="psort_date">Nejnovější</option>
+            <option value="engagement" data-i18n="psort_engagement">Nejvíce boostů + favů</option>
+            <option value="reblogs" data-i18n="psort_reblogs">Nejvíce boostů</option>
+            <option value="favourites" data-i18n="psort_favourites">Nejvíce favů</option>
+          </select>
+        </div>
+
+        <div class="filter-search filter-search-instance" id="instance-search-wrap" hidden>
+          <label for="instance-search" data-i18n="search_label">Vyhledat</label>
+          <input type="search" id="instance-search" placeholder="Název nebo doména…" data-i18n-ph="instance_search_ph" autocomplete="off">
+        </div>
+
+        <div class="filter-sort filter-sort-instance" id="instance-sort-wrap" hidden>
+          <label for="instance-sort-select" data-i18n="sort_label">Řadit</label>
+          <select id="instance-sort-select">
+            <option value="users" data-i18n="isort_users">Nejvíc uživatelů</option>
+            <option value="active" data-i18n="isort_active">Nejaktivnější</option>
+            <option value="catalog" data-i18n="isort_catalog">Nejvíc účtů z katalogu</option>
+            <option value="posts" data-i18n="isort_posts">Nejvíc příspěvků</option>
+          </select>
+        </div>
+
+        <section class="filter-group filter-group-instance" id="instance-region-group" data-filter="instance-region" hidden>
+          <h2 data-i18n="instance_region_head">Oblast</h2>
+          <div id="instance-cat-chips" class="filter-buttons"></div>
+        </section>
+
+        <div class="filter-sort filter-sort-search" id="search-sort-wrap" hidden>
+          <label for="search-sort-select" data-i18n="sort_label">Řadit</label>
+          <select id="search-sort-select">
+            <option value="relevance" data-i18n="ssort_relevance">Podle shody</option>
+            <option value="date" data-i18n="psort_date">Nejnovější</option>
+            <option value="engagement" data-i18n="psort_engagement">Nejvíce boostů + favů</option>
+            <option value="reblogs" data-i18n="psort_reblogs">Nejvíce boostů</option>
+            <option value="favourites" data-i18n="psort_favourites">Nejvíce favů</option>
+          </select>
+        </div>
+
+        <section class="filter-group" data-filter="family">
+          <h2 data-i18n="head_topic">Oblast</h2>
+          <div class="filter-buttons">
+            <button class="filter-btn fam-business" data-value="business" data-i18n="fam_business">Byznys</button>
+            <button class="filter-btn fam-humor" data-value="humor" data-i18n="fam_humor">Humor</button>
+            <button class="filter-btn fam-culture" data-value="culture" data-i18n="fam_culture">Kultura</button>
+            <button class="filter-btn fam-sport" data-value="sport" data-i18n="fam_sport">Sport</button>
+            <button class="filter-btn fam-government" data-value="government" data-i18n="fam_government">Stát</button>
+            <button class="filter-btn fam-science_tech" data-value="science_tech" data-i18n="fam_science_tech">Věda &amp; technika</button>
+            <button class="filter-btn fam-news" data-value="news" data-i18n="fam_news">Zprávy</button>
+            <button class="filter-btn fam-lifestyle" data-value="lifestyle" data-i18n="fam_lifestyle">Životní styl</button>
+          </div>
+        </section>
+
+        <section class="filter-group filter-hashtags" id="post-hashtags-group" data-filter="hashtag" hidden>
+          <h2 data-i18n="head_hashtags">Hashtagy</h2>
+          <div id="post-hashtag-selected" class="tag-selected"></div>
+          <div id="post-hashtag-chips" class="tag-chips"></div>
+        </section>
+
+        <section class="filter-group" data-filter="type">
+          <h2 data-i18n="head_type">Typ účtu</h2>
+          <div class="filter-buttons">
+            <button class="filter-chip" data-value="institution">Instituce/Organizace</button>
+            <button class="filter-chip" data-value="media" data-i18n="type_media">Médium</button>
+            <button class="filter-chip" data-value="person" data-i18n="type_person">Osoba</button>
+            <button class="filter-chip" data-value="other" data-i18n="type_other">Ostatní</button>
+            <button class="filter-chip" data-value="team" data-i18n="type_team">Tým</button>
+          </div>
+        </section>
+
+        <section class="filter-group" data-filter="language">
+          <h2 data-i18n="head_language">Jazyk</h2>
+          <div class="filter-buttons">
+            <button class="filter-chip" data-value="cs" data-i18n="lang_cs">Čeština</button>
+            <button class="filter-chip" data-value="sk" data-i18n="lang_sk">Slovenčina</button>
+            <button class="filter-chip" data-value="en" data-i18n="lang_en">English</button>
+          </div>
+        </section>
+
+        <section class="filter-group filter-tags" data-filter="tag">
+          <h2 data-i18n="head_tag">Tag</h2>
+          <div id="tag-selected" class="tag-selected"></div>
+          <div class="tag-autocomplete">
+            <input type="text" id="tag-input" placeholder="Filtr podle tagu…" data-i18n-ph="tag_ph" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-controls="tag-suggestions" aria-autocomplete="list">
+            <ul id="tag-suggestions" class="tag-suggestions" role="listbox" hidden></ul>
+          </div>
+          <div id="tag-chips" class="tag-chips"></div>
+        </section>
+
+        <button id="reset-filters" class="reset-btn" data-i18n="reset" hidden>Zrušit filtry</button>
+      </div>
+    </aside>
+
+    <section class="catalog">
+      <p id="slice-note" class="slice-note" hidden></p>
+
+      <div id="loading-state" class="loading-state">
+        <span class="spinner" aria-hidden="true"></span> <span data-i18n="loading">Načítám katalog…</span>
+      </div>
+
+      <div id="cards" class="cards-grid" aria-live="polite"></div>
+      <div id="cards-sentinel" aria-hidden="true"></div>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <p data-i18n="empty_title">Žádný zdroj neodpovídá filtrům.</p>
+        <p class="empty-hint" data-i18n="empty_hint">Zkus uvolnit některý z filtrů.</p>
+        <button id="empty-reset" class="reset-btn" data-i18n="empty_reset">Reset filtrů</button>
+      </div>
+    </section>
+
+    <!-- ===================== POHLED: POSTY ===================== -->
+    <section class="catalog posts-view" id="posts-view" hidden>
+      <div id="posts-loading" class="loading-state" hidden>
+        <span class="spinner" aria-hidden="true"></span> <span data-i18n="posts_loading">Načítám posty…</span>
+      </div>
+
+      <div id="posts-grid" class="cards-grid posts-grid" aria-live="polite"></div>
+
+      <div id="posts-empty" class="empty-state" hidden>
+        <p data-i18n="posts_empty">Žádný post neodpovídá filtrům.</p>
+      </div>
+
+      <div id="posts-unavailable" class="empty-state" hidden>
+        <p data-i18n="posts_unavailable">Posty jsou dostupné každý týden v pondělí ráno.</p>
+      </div>
+    </section>
+
+    <!-- ===================== POHLED: O SLONÍKU ===================== -->
+    <section class="about-view" id="about-view" hidden>
+
+      <!-- O SLONÍKOVI -->
+      <article class="about-content" data-about-section="about">
+        <div data-lang-block="cs">
+          <h2>O Sloníku</h2>
+          <p><strong>Sloník</strong> je katalog českých a slovenských uživatelů sítě
+            <a href="https://joinmastodon.org" target="_blank" rel="noopener">Mastodon</a>.
+            Pomáhá najít zajímavé lidi, média i instituce z našeho prostoru — napříč
+            všemi servery (instancemi), bez ohledu na to, kde mají účet.</p>
+          <p>Sloník je inspirovaný katalogem
+            <a href="https://katalog.zpravobot.news" target="_blank" rel="noopener">katalog.zpravobot.news</a>
+            ze Zprávobot.news, na který uživatelé pozitivně reagovali a stal se proto
+            základem Sloníka. Protože ale pracuje s daty z jiných Mastodon instancí,
+            všechny mechanismy pro získávání dat využívají veřejná rozhraní a data.</p>
+          <p>Sloník nabízí pět pohledů:</p>
+          <ul>
+            <li><strong>Vyhledávání</strong> — fulltext napříč účty i příspěvky; nezáleží
+              na diakritice a není potřeba přihlášení.</li>
+            <li><strong>Instance</strong> — adresář českých a slovenských serverů (kde si
+              založit účet) i s jejich velikostí, aktivitou a stavem registrací.</li>
+            <li><strong>Účty</strong> — prohledávatelný katalog profilů roztříděný podle
+              oblastí, typu a jazyka.</li>
+            <li><strong>Posty</strong> — týdenní žebříčky nejúspěšnějších příspěvků.</li>
+            <li><strong>Odkazy</strong> — kurátorovaný rozcestník článků a návodů o Mastodonu.</li>
+          </ul>
+          <h3>Odkud data pocházejí</h3>
+          <p>Účty se objevují přes veřejné Mastodon API (sociální graf + lokální
+            adresáře českých a slovenských instancí). Zařazení do oblasti a tagy
+            navrhuje jazykový model na základě profilu a posledních příspěvků.
+            Metriky (sledující, aktivita) se pravidelně obnovují.</p>
+          <p>Vyhledávání a Posty stojí na vlastním indexu, který pravidelně sbíráme
+            z veřejných (lokálních) timeline českých a slovenských instancí a z účtů
+            v katalogu. Na rozdíl od katalogu sem patří i <strong>automatické účty
+            (boti)</strong> — třeba zpravodajské kanály z instance zpravobot.news.</p>
+          <p>Katalog je zaměřený výhradně na <strong>češtinu a slovenštinu</strong> —
+            účty bez vazby na náš prostor se do něj nezařazují.</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>About Sloník</h2>
+          <p><strong>Sloník</strong> is a catalog of Czech and Slovak users of
+            <a href="https://joinmastodon.org" target="_blank" rel="noopener">Mastodon</a>.
+            It helps you discover interesting people, media and institutions from our
+            region — across all servers (instances), no matter where their account lives.</p>
+          <p>Sloník is inspired by
+            <a href="https://katalog.zpravobot.news" target="_blank" rel="noopener">katalog.zpravobot.news</a>
+            from Zprávobot.news, which users responded to positively and which therefore
+            became the basis of Sloník. Because it works with data from other Mastodon
+            instances, all data-gathering uses public interfaces and public data.</p>
+          <p>Sloník has five views:</p>
+          <ul>
+            <li><strong>Search</strong> — full text across accounts and posts;
+              diacritics-insensitive, no login needed.</li>
+            <li><strong>Instances</strong> — a directory of Czech and Slovak servers
+              (where to create an account) with their size, activity and registration status.</li>
+            <li><strong>Accounts</strong> — a searchable catalog of profiles sorted by
+              topic, type and language.</li>
+            <li><strong>Posts</strong> — weekly charts of the best-performing posts.</li>
+            <li><strong>Links</strong> — a curated set of articles and guides about Mastodon.</li>
+          </ul>
+          <h3>Where the data comes from</h3>
+          <p>Accounts are discovered via the public Mastodon API (social graph + local
+            directories of Czech and Slovak instances). Topic and tags are suggested by
+            a language model based on the profile and recent posts. Metrics (followers,
+            activity) are refreshed regularly.</p>
+          <p>Search and Posts are built on our own index, regularly collected from the
+            public (local) timelines of Czech and Slovak instances and from catalog
+            accounts. Unlike the catalog, this also includes <strong>automated accounts
+            (bots)</strong> — e.g. news feeds from the zpravobot.news instance.</p>
+          <p>The catalog focuses exclusively on <strong>Czech and Slovak</strong> —
+            accounts with no tie to our region are not included.</p>
+        </div>
+      </article>
+
+      <!-- JAK PRACOVAT S VYHLEDÁVÁNÍM -->
+      <article class="about-content" data-about-section="search" hidden>
+        <div data-lang-block="cs">
+          <h2>Jak pracovat s Vyhledáváním</h2>
+          <p>Do pole napiš, co hledáš — Sloník naráz prohledá <strong>účty i příspěvky</strong>
+            českého a slovenského Mastodonu. Nezáleží na velikosti písmen ani diakritice
+            (napíšeš „bouzkova", najde „Bouzková") a není potřeba se přihlašovat.</p>
+          <h3>Co prohledává</h3>
+          <p>Hledá ve vlastním indexu příspěvků za posledních zhruba 30 dní (sbíraném
+            z lokálních timeline CZ/SK instancí a z katalogových účtů) a v seznamu účtů.
+            Výsledky jsou ve dvou sekcích — <strong>Účty</strong> a <strong>Posty</strong> —
+            se stejnými kartami jako v tabech Účty a Posty.</p>
+          <p>Při <strong>jednom nebo dvou písmenech</strong> funguje jako <strong>napovídač účtů</strong> —
+            vypíše účty, jejichž jméno (nebo handle) tím začíná (např. „da" → David, Dan, Danuše).
+            Od <strong>tří písmen</strong> běží plné hledání v účtech i příspěvcích.</p>
+          <p>Když napíšeš víc slov, musí se objevit <strong>všechna</strong> (logické „a zároveň").
+            Přesnou frázi uzavři do <strong>uvozovek</strong> — např. <code>„jarní úklid"</code>
+            najde jen příspěvky, kde jsou ta slova hned za sebou. Slovo <strong>vyloučíš mínusem</strong> —
+            <code>praha -kolo</code> najde příspěvky s „praha" bez „kolo".</p>
+          <figure class="about-figure">
+            <img src="search-results.png" alt="Náhled výsledků vyhledávání" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Filtry a žebříčky</h3>
+          <ul>
+            <li><strong>Oblast (dle účtu)</strong> a <strong>Hashtagy</strong> — zúží nalezené příspěvky (oblast je téma autora).</li>
+            <li><strong>Řadit</strong> — podle shody, nejnovější, nebo dle boostů/oblíbených.</li>
+            <li><strong>Top 10 / 50</strong> a <strong>Skokani týdne</strong> (Poměrem / Dosahem) — žebříčky nalezených příspěvků.</li>
+          </ul>
+          <p>Ve výsledcích jsou i <strong>automatické účty (boti)</strong> — třeba
+            zpravodajské kanály — které v katalogu Účtů nenajdeš.</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Working with Search</h2>
+          <p>Type what you're looking for — Sloník searches <strong>accounts and posts</strong>
+            across the Czech and Slovak Mastodon at once. It's case- and diacritics-insensitive
+            (type "bouzkova", it finds "Bouzková") and no login is needed.</p>
+          <h3>What it searches</h3>
+          <p>It searches our own index of posts from roughly the last 30 days (collected
+            from the local timelines of CZ/SK instances and from catalog accounts) and the
+            list of accounts. Results come in two sections — <strong>Accounts</strong> and
+            <strong>Posts</strong> — using the same cards as the Accounts and Posts tabs.</p>
+          <p>With <strong>one or two letters</strong> it acts as an <strong>account autocomplete</strong> —
+            it lists accounts whose name (or handle) starts with them (e.g. "da" → David, Dan).
+            From <strong>three letters</strong> the full search across accounts and posts runs.</p>
+          <p>With multiple words, <strong>all</strong> of them must appear (logical AND). Wrap an
+            exact phrase in <strong>quotes</strong> — e.g. <code>"spring cleanup"</code> matches
+            only posts where those words appear right next to each other. <strong>Exclude a word
+            with a minus</strong> — <code>praha -kolo</code> finds posts with "praha" but without "kolo".</p>
+          <figure class="about-figure">
+            <img src="search-results.png" alt="Search results preview" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Filters and charts</h3>
+          <ul>
+            <li><strong>Topic (by account)</strong> and <strong>Hashtags</strong> — narrow the found posts (topic is the author's).</li>
+            <li><strong>Sort</strong> — by relevance, newest, or by boosts/favourites.</li>
+            <li><strong>Top 10 / 50</strong> and <strong>Weekly risers</strong> (by ratio / by reach) — charts of the found posts.</li>
+          </ul>
+          <p>Results also include <strong>automated accounts (bots)</strong> — e.g. news
+            feeds — which you won't find in the Accounts catalog.</p>
+        </div>
+      </article>
+
+      <!-- JAK PRACOVAT S INSTANCEMI -->
+      <article class="about-content" data-about-section="instance" hidden>
+        <div data-lang-block="cs">
+          <h2>Jak pracovat s Instancemi</h2>
+          <p>Pohled <strong>Instance</strong> je adresář serverů, na kterých běží český
+            a slovenský Mastodon — užitečný, když si chceš <strong>založit účet</strong>
+            a vybrat, kam patříš.</p>
+          <h3>Co karta ukazuje</h3>
+          <p>Logo a název, krátký popis, počet uživatelů, měsíční aktivitu, počet
+            příspěvků, stav registrací a kolik je na ní účtů z našeho katalogu. Tlačítko
+            <em>Založit účet</em> vede přímo na registraci dané instance.</p>
+          <figure class="about-figure">
+            <img src="card-instance.png" alt="Náhled karty instance" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Sekce</h3>
+          <ul>
+            <li><strong>České a slovenské instance</strong> — hlavní komunitní servery.</li>
+            <li><strong>Malé / osobní instance</strong> — drobné nebo rodinné servery.</li>
+            <li><strong>Další instance s českými/slovenskými účty</strong> — velké
+              zahraniční servery, kde má účet hodně Čechů a Slováků.</li>
+          </ul>
+          <h3>Filtry a žebříčky</h3>
+          <p>Vlevo <strong>Vyhledat</strong>, <strong>Řadit</strong> a <strong>Oblast</strong>
+            (zaměření instance). Nad seznamem jsou žebříčky <strong>Top 10 / 50</strong> a
+            <strong>Aktivita instance</strong> — <em>Poměrem</em> (podíl aktivních uživatelů)
+            a <em>Objemem</em> (celkový počet příspěvků).</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Working with Instances</h2>
+          <p>The <strong>Instances</strong> view is a directory of servers running the
+            Czech and Slovak Mastodon — handy when you want to <strong>create an account</strong>
+            and pick where you belong.</p>
+          <h3>What a card shows</h3>
+          <p>Logo and name, a short description, the user count, monthly activity, post
+            count, registration status and how many catalog accounts live there. The
+            <em>Create account</em> button goes straight to that instance's sign-up.</p>
+          <figure class="about-figure">
+            <img src="card-instance.png" alt="Instance card preview" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Sections</h3>
+          <ul>
+            <li><strong>Czech &amp; Slovak instances</strong> — the main community servers.</li>
+            <li><strong>Small / personal instances</strong> — tiny or family servers.</li>
+            <li><strong>Other instances with Czech/Slovak accounts</strong> — large foreign
+              servers where many Czechs and Slovaks have an account.</li>
+          </ul>
+          <h3>Filters and charts</h3>
+          <p>On the left: <strong>Search</strong>, <strong>Sort</strong> and <strong>Topic</strong>
+            (instance focus). Above the list are the <strong>Top 10 / 50</strong> and
+            <strong>Instance activity</strong> charts — <em>by ratio</em> (share of active
+            users) and <em>by volume</em> (total posts).</p>
+        </div>
+      </article>
+
+      <!-- JAK PRACOVAT S ÚČTY -->
+      <article class="about-content" data-about-section="accounts" hidden>
+        <div data-lang-block="cs">
+          <h2>Jak pracovat s Účty</h2>
+          <p>Pohled <strong>Účty</strong> je hlavní seznam profilů. Každá karta ukazuje
+            jméno, handle, oblast, krátké bio a počet sledujících. Kliknutím na kartu
+            otevřeš detail.</p>
+          <figure class="about-figure">
+            <img src="card-account.png" alt="Náhled karty účtu" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Filtrování (levý panel)</h3>
+          <ul>
+            <li><strong>Vyhledat</strong> — fulltext ve jméně i handle.</li>
+            <li><strong>Oblast</strong> — tematické zařazení (Zprávy, Kultura, Sport,
+              Věda &amp; technika, Stát, Byznys, Humor, Životní styl).</li>
+            <li><strong>Typ účtu</strong> — osoba, médium, organizace, tým, ostatní.</li>
+            <li><strong>Jazyk</strong> — čeština, slovenština, angličtina.</li>
+            <li><strong>Tag</strong> — jemnější štítky; začni psát a vyber z nabídky.
+              Více tagů funguje jako „a zároveň".</li>
+          </ul>
+          <p>Aktivní filtry zrušíš tlačítkem <em>Zrušit filtry</em>.</p>
+          <h3>Řazení a žebříčky</h3>
+          <p>V levém panelu (na mobilu v menu) přepneš <strong>Řadit</strong> (abecedně, nejvíc
+            sledujících, nejaktivnější, nejnověji přidané). Pruh <strong>Žebříčky</strong> nad
+            seznamem nabízí hotové výběry: <em>Top sledovaných / aktivních</em>,
+            <em>Skokani týdne</em> (největší nárůst sledujících či aktivity) a
+            <em>Nedávno přidané</em>.</p>
+          <h3>Detail a sledování</h3>
+          <p>V detailu najdeš celé bio, tagy, metriky a původní profil(y). Tlačítko
+            <em>Otevřít profil</em> tě přenese na domovskou instanci účtu, odkud ho
+            můžeš ze své vlastní instance začít sledovat.</p>
+          <figure class="about-figure">
+            <img src="card-account-detail.png" alt="Náhled detailu účtu" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Working with Accounts</h2>
+          <p>The <strong>Accounts</strong> view is the main list of profiles. Each card
+            shows the name, handle, topic, a short bio and the follower count. Click a
+            card to open its detail.</p>
+          <figure class="about-figure">
+            <img src="card-account.png" alt="Account card preview" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+          <h3>Filtering (left panel)</h3>
+          <ul>
+            <li><strong>Search</strong> — full text in name and handle.</li>
+            <li><strong>Topic</strong> — thematic area (News, Culture, Sports,
+              Science &amp; tech, Government, Business, Humor, Lifestyle).</li>
+            <li><strong>Account type</strong> — person, media, organization, team, other.</li>
+            <li><strong>Language</strong> — Czech, Slovak, English.</li>
+            <li><strong>Tag</strong> — finer labels; start typing and pick from the list.
+              Multiple tags act as "and".</li>
+          </ul>
+          <p>Clear active filters with the <em>Clear filters</em> button.</p>
+          <h3>Sorting and charts</h3>
+          <p>In the left panel (in the menu on mobile) switch <strong>Sort</strong>
+            (alphabetically, most followers, most active, recently added). The
+            <strong>Charts</strong> bar above the list offers ready-made picks:
+            <em>Top followed / active</em>, <em>Weekly risers</em> (biggest growth in
+            followers or activity) and <em>Recently added</em>.</p>
+          <h3>Detail and following</h3>
+          <p>The detail shows the full bio, tags, metrics and original profile(s). The
+            <em>Open profile</em> button takes you to the account's home instance, from
+            where you can follow it via your own instance.</p>
+          <figure class="about-figure">
+            <img src="card-account-detail.png" alt="Account detail preview" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+      </article>
+
+      <!-- JAK PRACOVAT S POSTY -->
+      <article class="about-content" data-about-section="posts" hidden>
+        <div data-lang-block="cs">
+          <h2>Jak pracovat s Posty</h2>
+          <p>Pohled <strong>Posty</strong> ukazuje <strong>týdenní žebříčky příspěvků</strong>
+            od účtů v katalogu. Data se generují jednou týdně, v pondělí ráno.</p>
+          <h3>Řazení a žebříčky</h3>
+          <ul>
+            <li><strong>Řadit</strong> (levý panel): nejvíce boostů + favů, nejvíce
+              boostů, nejvíce favů, nejnovější, od nejstaršího.</li>
+            <li><strong>Top 10 / Top 50</strong>: zkrátí žebříček.</li>
+            <li><strong>Skokani týdne</strong>: příspěvky, které výrazně překonaly
+              obvyklý dosah svého účtu — ve dvou pohledech:
+              <ul>
+                <li><em>Poměrem</em> — kolikrát překonaly průměr účtu (vynese i menší
+                  účty s neobvykle úspěšným postem).</li>
+                <li><em>Dosahem</em> — o kolik absolutně překonaly průměr účtu
+                  (zvýhodňuje účty s velkým dosahem).</li>
+              </ul>
+            </li>
+          </ul>
+          <h3>Filtrování</h3>
+          <p>Posty filtruješ podle <strong>Oblasti (dle účtu)</strong> — téma je dané autorem,
+            ne jednotlivým postem — <strong>fulltextem</strong> (text postu i jméno účtu) a podle
+            <strong>Hashtagů</strong> (nabídka nejčastějších hashtagů z právě zobrazených postů,
+            více funguje jako „a zároveň"). Hashtagy přímo v textu příspěvku jsou klikatelné.</p>
+          <h3>Karta postu</h3>
+          <p>Avatar i jméno účtu jsou prolink na <strong>profil</strong>. Dole najdeš
+            počet boostů 🔁, oblíbení ⭐ a datum 📅; odkaz <em>Otevřít na Mastodonu</em>
+            vede na původní příspěvek.</p>
+          <figure class="about-figure">
+            <img src="card-post.png" alt="Náhled karty postu" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Working with Posts</h2>
+          <p>The <strong>Posts</strong> view shows <strong>weekly post charts</strong>
+            from accounts in the catalog. Data is generated once a week, Monday morning.</p>
+          <h3>Sorting and charts</h3>
+          <ul>
+            <li><strong>Sort</strong> (left panel): most boosts + favs, most boosts,
+              most favs, newest, oldest first.</li>
+            <li><strong>Top 10 / Top 50</strong>: trims the chart.</li>
+            <li><strong>Weekly risers</strong>: posts that clearly beat their account's
+              usual reach — in two views:
+              <ul>
+                <li><em>By ratio</em> — how many times they beat the account's average
+                  (surfaces smaller accounts with an unusually successful post).</li>
+                <li><em>By reach</em> — how far they beat the average in absolute terms
+                  (favors high-reach accounts).</li>
+              </ul>
+            </li>
+          </ul>
+          <h3>Filtering</h3>
+          <p>Filter posts by <strong>Topic (by account)</strong> — the topic comes from the
+            author, not the individual post — <strong>full text</strong> (post text and account
+            name) and by <strong>Hashtags</strong> (the most frequent hashtags from the currently
+            shown posts; multiple act as "and"). Hashtags inside the post text are clickable.</p>
+          <h3>Post card</h3>
+          <p>Both the avatar and the account name link to the <strong>profile</strong>.
+            At the bottom you'll find boosts 🔁, favourites ⭐ and the date 📅; the
+            <em>Open on Mastodon</em> link goes to the original post.</p>
+          <figure class="about-figure">
+            <img src="card-post.png" alt="Post card preview" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+      </article>
+
+      <!-- JAK PRACOVAT S ODKAZY -->
+      <article class="about-content" data-about-section="links" hidden>
+        <div data-lang-block="cs">
+          <h2>Jak pracovat s Odkazy</h2>
+          <p>Pohled <strong>Odkazy</strong> je kurátorovaný rozcestník kvalitních článků
+            a návodů o Mastodonu a fediverse — česky i anglicky. Karty jsou seskupené
+            podle typu.</p>
+          <h3>Filtry (levý panel / menu)</h3>
+          <ul>
+            <li><strong>Typ</strong> — Vysvětlení, Návody, Pro provozovatele, Kontext.</li>
+            <li><strong>Jazyk</strong> — čeština, angličtina.</li>
+          </ul>
+          <h3>Karta odkazu</h3>
+          <p>Titul je <strong>odkaz na článek</strong> (otevře se v nové záložce). Pod ním
+            je jazyk, zdroj a <em>aktuálnost</em> — většina českých textů je z migrační vlny
+            2022/2023; obsahově drží, ale detaily prostředí se od té doby mohly změnit, proto
+            u každého uvádíme, jak je starý.</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Working with Links</h2>
+          <p>The <strong>Links</strong> view is a curated set of quality articles and guides
+            about Mastodon and the fediverse — Czech and English. Cards are grouped by type.</p>
+          <h3>Filters (left panel / menu)</h3>
+          <ul>
+            <li><strong>Type</strong> — Explainers, Guides, For instance admins, Context.</li>
+            <li><strong>Language</strong> — Czech, English.</li>
+          </ul>
+          <h3>Link card</h3>
+          <p>The title is a <strong>link to the article</strong> (opens in a new tab). Below it
+            you'll find the language, source and <em>freshness</em> — most Czech texts date from
+            the 2022/2023 migration wave; the substance holds up, but UI details may have changed
+            since, so each one notes how old it is.</p>
+        </div>
+      </article>
+
+      <!-- FAQ -->
+      <article class="about-content" data-about-section="faq" hidden>
+        <div data-lang-block="cs">
+          <h2>FAQ — časté otázky</h2>
+          <h3>Proč se tento katalog jmenuje zrovna Sloník?</h3>
+          <p>Síť Mastodon má v názvu i ve znaku mastodonta — vyhynulého chobotnatce
+            příbuzného dnešním slonům. A protože tahle stránka chce být tak trochu i
+            „slovníkem" českého a slovenského fediverse, nabídlo se spojení <strong>slona</strong>
+            a <strong>slovníku</strong>: <strong>Sloník</strong>.</p>
+          <h3>Chci být v katalogu, ale nejsem. Co mám udělat?</h3>
+          <p>Mělo by postačit mít veřejný účet a být aktivní na české nebo slovenské
+            instanci. Pokud i přesto nejsi v katalogu, možná tvou instanci ještě neznáme —
+            začni proto sledovat
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor</a>
+            nebo <a href="https://zpravobot.news/@zpravobot" target="_blank" rel="noopener">@zpravobot</a>
+            a naše mechanismy tě do katalogu doplní.</p>
+          <h3>Nechci být v katalogu.</h3>
+          <p>Jsi vlastník účtu a nechceš v Sloníkovi být? Napiš na
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>
+            a účet odstraníme.</p>
+          <h3>Proč některé účty v záložce Účty nevidím?</h3>
+          <p>V <strong>Účtech</strong> ukazujeme jen <strong>aktivní</strong> účty — s příspěvkem
+            za posledních <strong>90 dní</strong>. Účet, který delší dobu mlčí, se dočasně skryje
+            a vrátí se, jakmile zase něco napíše. (Automatické účty v katalogu nejsou vůbec —
+            viz níže.) Ve <strong>Vyhledávání</strong> a <strong>Postech</strong> tahle hranice
+            neplatí.</p>
+          <h3>Nevidím tu nikde svého oblíbeného bota. Proč?</h3>
+          <p>Boti se do katalogu <strong>Účtů</strong> záměrně nezařazují — ten je o lidech,
+            médiích a institucích. Najdeš je ale ve <strong>Vyhledávání</strong> a v
+            <strong>Postech</strong>, pokud jejich domovskou instanci indexujeme: české
+            a slovenské instance plus velké „obsahové" instance jako
+            <a href="https://zpravobot.news" target="_blank" rel="noopener">zpravobot.news</a>.
+            Posty z botích instancí navíc držíme jen kratší dobu, ať vyhledávání zůstane svižné.
+            Když svého bota nevidíš, nejspíš běží na instanci, kterou ještě neznáme — napiš nám
+            a rádi ji doplníme.</p>
+          <h3>Jak se počítají žebříčky a Skokani?</h3>
+          <p>Nic složitého ani váženého. <strong>Engagement</strong> příspěvku = boosty + oblíbení.
+            Žebříčky postů řadí podle engagementu (nebo podle data / boostů / oblíbených, dle volby).</p>
+          <p><strong>Skokani týdne</strong> jsou příspěvky, které výrazně překonaly <em>obvyklý</em>
+            výkon svého účtu:</p>
+          <ul>
+            <li><strong>Poměrem</strong> = engagement ÷ průměr účtu — kolikrát příspěvek překonal
+              svůj průměr (vynese i menší účet s jedním povedeným postem).</li>
+            <li><strong>Dosahem</strong> = engagement − průměr účtu — o kolik ho překonal absolutně
+              (zvýhodní účty s velkým dosahem).</li>
+          </ul>
+          <p>Skokani se počítají jen u účtů s aspoň 3 příspěvky v daném okně, ať průměr není náhoda.
+            Pozn.: v <strong>Postech</strong> je okno jeden týden, ve <strong>Vyhledávání</strong>
+            posledních ~30 dní — stejný účet tak může v každé záložce vyjít trochu jinak.</p>
+          <h3>To je skvělý projekt, který bych moc rád finančně podpořil. Jak to mohu udělat?</h3>
+          <p>Mockrát děkujeme! Sloník.online i Zprávobot.news můžeš podpořit takto:</p>
+          <ul class="faq-support">
+            <li>🏦 IBAN: <strong>CZ8830300000001001612070</strong></li>
+            <li>🖥️ <a href="https://forendors.cz/zpravobot" target="_blank" rel="noopener">forendors.cz/zpravobot</a></li>
+            <li>☕️ <a href="https://ko-fi.com/zpravobot" target="_blank" rel="noopener">ko-fi.com/zpravobot</a></li>
+            <li>💳 <a href="https://revolut.me/zpravobot" target="_blank" rel="noopener">revolut.me/zpravobot</a></li>
+          </ul>
+          <figure class="about-figure qr">
+            <img src="qr.jpg" alt="QR kód pro platbu" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>FAQ</h2>
+          <h3>Why is this catalog called Sloník?</h3>
+          <p>The Mastodon network is named after — and depicts — the mastodon, an extinct
+            relative of today's elephants. And because this site also wants to be a bit of a
+            “dictionary” (<em>slovník</em>) of the Czech and Slovak fediverse, combining
+            <strong>elephant</strong> (<em>slon</em>) and <strong>dictionary</strong>
+            (<em>slovník</em>) was a natural fit: <strong>Sloník</strong>.</p>
+          <h3>I want to be in the catalog but I'm not. What should I do?</h3>
+          <p>It should be enough to have a public account and be active on a Czech or Slovak
+            instance. If you're still not in the catalog, we may not know your instance yet —
+            start following
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor</a>
+            or <a href="https://zpravobot.news/@zpravobot" target="_blank" rel="noopener">@zpravobot</a>
+            and our mechanisms will add you in.</p>
+          <h3>I don't want to be in the catalog.</h3>
+          <p>Are you the account owner and don't want to be in Sloník? Write to
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>
+            and we'll remove the account.</p>
+          <h3>Why don't I see some accounts in the Accounts tab?</h3>
+          <p>In <strong>Accounts</strong> we only show <strong>active</strong> accounts — those
+            that posted within the last <strong>90 days</strong>. An account that goes quiet is
+            temporarily hidden and returns as soon as it posts again. (Bots aren't in the catalog
+            at all — see below.) This limit doesn't apply in <strong>Search</strong> and
+            <strong>Posts</strong>.</p>
+          <h3>I can't find my favourite bot anywhere. Why?</h3>
+          <p>Bots are deliberately kept out of the <strong>Accounts</strong> catalog — that's
+            about people, media and institutions. You'll find them in <strong>Search</strong>
+            and <strong>Posts</strong>, as long as we index their home instance: Czech and
+            Slovak instances plus large “content” instances such as
+            <a href="https://zpravobot.news" target="_blank" rel="noopener">zpravobot.news</a>.
+            Posts from bot instances are also kept for a shorter window to keep search fast.
+            If you can't see your bot, it's probably on an instance we don't know yet — let us
+            know and we'll gladly add it.</p>
+          <h3>How are the charts and risers calculated?</h3>
+          <p>Nothing complex or weighted. A post's <strong>engagement</strong> = boosts + favourites.
+            Post charts are ranked by engagement (or by date / boosts / favourites, as you choose).</p>
+          <p><strong>Weekly risers</strong> are posts that clearly beat their account's <em>usual</em>
+            performance:</p>
+          <ul>
+            <li><strong>By ratio</strong> = engagement ÷ the account's average — how many times the
+              post beat its own average (surfaces smaller accounts with a stand-out post).</li>
+            <li><strong>By reach</strong> = engagement − the account's average — how far it beat it
+              in absolute terms (favours high-reach accounts).</li>
+          </ul>
+          <p>Risers are computed only for accounts with at least 3 posts in the window, so the
+            average isn't a fluke. Note: in <strong>Posts</strong> the window is one week, in
+            <strong>Search</strong> the last ~30 days — so the same account may rank slightly
+            differently in each.</p>
+          <h3>This is a great project and I'd love to support it financially. How?</h3>
+          <p>Thank you so much! You can support Sloník.online and Zprávobot.news here:</p>
+          <ul class="faq-support">
+            <li>🏦 IBAN: <strong>CZ8830300000001001612070</strong></li>
+            <li>🖥️ <a href="https://forendors.cz/zpravobot" target="_blank" rel="noopener">forendors.cz/zpravobot</a></li>
+            <li>☕️ <a href="https://ko-fi.com/zpravobot" target="_blank" rel="noopener">ko-fi.com/zpravobot</a></li>
+            <li>💳 <a href="https://revolut.me/zpravobot" target="_blank" rel="noopener">revolut.me/zpravobot</a></li>
+          </ul>
+          <figure class="about-figure qr">
+            <img src="qr.jpg" alt="Payment QR code" loading="lazy" onerror="this.closest('figure').remove()">
+          </figure>
+        </div>
+      </article>
+
+      <!-- TECHNICKÉ ŘEŠENÍ -->
+      <article class="about-content" data-about-section="tech" hidden>
+        <div data-lang-block="cs">
+          <h2>Technické řešení</h2>
+          <p>Sloník.online je úmyslně jednoduchý: web je <strong>čistě statický</strong>
+            (HTML, CSS a trocha JavaScriptu), bez serverové aplikace, bez přihlašování
+            a bez sledování návštěvníků. Veškerá „chytrost" se odehrává předem v dávkových
+            skriptech — web jen zobrazuje hotová data.</p>
+          <h3>Sběr dat</h3>
+          <p>Na samostatném serveru běží sada skriptů v jazyce <strong>Ruby</strong>, které
+            pravidelně (cronem) sbírají data z <strong>veřejných rozhraní Mastodonu</strong> —
+            sociální graf, lokální adresáře instancí a veřejné timeline. Žádné soukromé
+            údaje, jen to, co je veřejně dostupné.</p>
+          <h3>Kategorizace</h3>
+          <p>Zařazení účtů do oblastí, typu a tagů (a zaměření instancí) navrhuje jazykový
+            model na základě veřejného profilu a posledních příspěvků. U instancí se primárně
+            použije oficiální katalog <a href="https://joinmastodon.org" target="_blank" rel="noopener">joinmastodon.org</a>,
+            zbytek doplní AI.</p>
+          <h3>Vyhledávání</h3>
+          <p>Vyhledávací index si stavíme sami z veřejných timeline a hledá se <strong>kompletně
+            v prohlížeči</strong> — deterministicky, bez ohledu na diakritiku a bez odesílání
+            dotazů na server. Index zahrnuje i automatické účty (boty).</p>
+          <h3>Metriky a žebříčky</h3>
+          <p>Metriky jsou záměrně jednoduché a počítané z veřejných čísel: <strong>engagement</strong>
+            = boosty + oblíbení; <strong>Skokani</strong> porovnávají příspěvek s průměrným výkonem
+            jeho účtu (min. 3 posty). V záložce Účty navíc ukazujeme jen účty aktivní za posledních
+            90 dní. Žádné vážené skóre ani skrytá magie — vše jde dopočítat z dat, která zobrazujeme.</p>
+          <h3>Provoz a publikace</h3>
+          <p>Hotová data (katalog, žebříčky, vyhledávací index, přehled instancí) se nahrávají
+            na statický hosting. Kód je oddělený od dat a přístupové tokeny nikdy nejsou
+            součástí webu ani veřejného kódu. Sloník pracuje výhradně s <strong>veřejnými
+            daty a otevřenými rozhraními</strong>.</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>Technical details</h2>
+          <p>Sloník.online is deliberately simple: the site is <strong>fully static</strong>
+            (HTML, CSS and a bit of JavaScript), with no server application, no login and no
+            visitor tracking. All the “smarts” happen beforehand in batch scripts — the site
+            just displays ready-made data.</p>
+          <h3>Data collection</h3>
+          <p>A separate server runs a set of <strong>Ruby</strong> scripts that regularly (via
+            cron) collect data from the <strong>public Mastodon APIs</strong> — the social
+            graph, local instance directories and public timelines. No private data, only
+            what is publicly available.</p>
+          <h3>Categorization</h3>
+          <p>Topics, type and tags for accounts (and the focus of instances) are suggested by
+            a language model based on the public profile and recent posts. For instances we
+            primarily use the official <a href="https://joinmastodon.org" target="_blank" rel="noopener">joinmastodon.org</a>
+            directory, with AI filling the rest.</p>
+          <h3>Search</h3>
+          <p>We build the search index ourselves from public timelines, and searching happens
+            <strong>entirely in the browser</strong> — deterministic, diacritics-insensitive,
+            with no queries sent to a server. The index also includes automated accounts (bots).</p>
+          <h3>Metrics and charts</h3>
+          <p>Metrics are deliberately simple and computed from public numbers:
+            <strong>engagement</strong> = boosts + favourites; <strong>risers</strong> compare a
+            post to its account's average performance (min. 3 posts). The Accounts tab additionally
+            shows only accounts active in the last 90 days. No weighted scores or hidden magic —
+            everything can be derived from the data we display.</p>
+          <h3>Operation and publishing</h3>
+          <p>The finished data (catalog, charts, search index, instance overview) is uploaded
+            to static hosting. Code is kept separate from data and access tokens are never part
+            of the website or public code. Sloník works exclusively with <strong>public data
+            and open interfaces</strong>.</p>
+        </div>
+      </article>
+
+      <!-- O AUTOROVI -->
+      <article class="about-content" data-about-section="author" hidden>
+        <div data-lang-block="cs">
+          <h2>O autorovi</h2>
+          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" onerror="this.style.display='none'">
+          <p>Za Sloníkem stojí <strong>Daniel Šnor</strong> — nadšenec do Mastodonu a celé
+            sítě fediverse z českého prostředí.</p>
+          <p>Provozuje projekt <a href="https://zpravobot.news" target="_blank" rel="noopener">Zprávobot.news</a> —
+            veřejně prospěšnou službu, která zrcadlí oblíbené primárně české a slovenské
+            X/Twitter účty, přinášející na Mastodon a BlueSky jinak chybějící zprávy,
+            sport, informace o technologiích, kultuře, a někdy i humor.</p>
+          <p>Sloník vznikl jako jeho přirozené rozšíření: zatímco Zprávobot přivádí obsah,
+            Sloník pomáhá objevovat lidi, účty a instance. Předlohou byl i tamní
+            <a href="https://katalog.zpravobot.news" target="_blank" rel="noopener">katalog.zpravobot.news</a>.</p>
+          <p>Mastodonu a celé síti fediverse fandí jako otevřené a decentralizované alternativě
+            ke komerčním sítím — bez algoritmů, reklam a sledování uživatelů. Sloník i Zprávobot
+            jsou jeho příspěvkem k tomu, aby tu byl český a slovenský obsah lépe vidět a snáz
+            se objevoval.</p>
+          <p>Máš nápad, připomínku, nebo nechceš být v katalogu? Napiš na
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>.</p>
+        </div>
+        <div data-lang-block="en" hidden>
+          <h2>About the author</h2>
+          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" onerror="this.style.display='none'">
+          <p>Sloník is made by <strong>Daniel Šnor</strong> — a Czech enthusiast of Mastodon
+            and the wider fediverse.</p>
+          <p>He runs the <a href="https://zpravobot.news" target="_blank" rel="noopener">Zprávobot.news</a>
+            project — a public-benefit service that mirrors popular, primarily Czech and
+            Slovak X/Twitter accounts, bringing to Mastodon and BlueSky
+            otherwise-missing news, sport, technology, culture,
+            and sometimes humor.</p>
+          <p>Sloník grew out of it as a natural extension: while Zprávobot brings in content,
+            Sloník helps you discover people, accounts and instances. It was also inspired by
+            the local <a href="https://katalog.zpravobot.news" target="_blank" rel="noopener">katalog.zpravobot.news</a>.</p>
+          <p>He's a fan of Mastodon and the wider fediverse as an open, decentralized
+            alternative to commercial networks — no algorithms, ads or user tracking. Sloník
+            and Zprávobot are his contribution to making Czech and Slovak content more visible
+            and easier to discover here.</p>
+          <p>Have an idea, feedback, or want to be removed from the catalog? Write to
+            <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>.</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================== POHLED: VYHLEDÁVÁNÍ ===================== -->
+    <section class="search-view" id="search-view" hidden>
+      <div class="search-hero">
+        <span class="search-wordmark search-wordmark-l">Sloník</span>
+        <img class="search-logo" src="slonik.png" alt="Sloník" width="200" height="133">
+        <span class="search-wordmark search-wordmark-r">online</span>
+      </div>
+      <div class="search-bar">
+        <input type="search" id="search-q" autocomplete="off"
+               placeholder="Hledat účty i posty…" data-i18n-ph="search_ph_view">
+      </div>
+      <p class="search-tagline" data-i18n="search_tagline">Prohledá účty i příspěvky českého a slovenského Mastodonu — bez ohledu na diakritiku a bez přihlášení.</p>
+      <p class="search-tip" data-i18n="search_tip">Tip: víc slov = musí být všechna; přesnou frázi dej do uvozovek („…"), slovo vylučíš mínusem (-slovo).</p>
+      <div id="search-results" class="search-results"></div>
+    </section>
+
+    <!-- ===================== POHLED: INSTANCE ===================== -->
+    <section class="instance-view" id="instance-view" hidden>
+      <div id="instance-results"></div>
+    </section>
+
+    <section class="instance-view" id="links-view" hidden>
+      <div id="links-results"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p><span id="footer-indexed" hidden><span data-i18n="footer_indexed">Vyhledávání naposledy indexováno</span> <strong id="indexed-date"></strong>. </span><span data-i18n="footer_updated">Katalog naposledy aktualizován</span> <strong>31. 5. 2026</strong><span id="updated-relative" class="updated-relative"></span>.</p>
+    </div>
+  </footer>
+
+  <dialog id="detail-modal" class="detail-modal" aria-label="Detail zdroje"></dialog>
+
+  <script src="links.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
