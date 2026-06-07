@@ -22,5 +22,14 @@
 # Příklad (odkomentuj a uprav):
 # zpravobot@zpravobot.news
 # pocasimb@mastodonczech.cz
+
+# české účty, byť většinové v angličtině
+prahou@merveilles.town
 vbabka@mastodon.social
 adamhavelka@mastodon.prorocketeers.com
+
+# boty, které stojí za to mít v katalogu
+fffilm@mastodonczech.cz
+telekafkycky@mastodonczech.cz
+publikafkycky@mastodonczech.cz
+sportkafkycky@mastodonczech.cz
