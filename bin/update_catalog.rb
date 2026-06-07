@@ -35,6 +35,7 @@
 require "json"
 require "set"
 require "date"
+require "time"
 require_relative "../lib/config"        # config.env do ENV + Surfer.upload
 require_relative "../lib/mastodon_api"
 require_relative "../lib/ai"
@@ -135,7 +136,9 @@ def categorize_candidate(cand, force: false)
     "avatar" => acct["avatar"],
     "bio" => acct["note"].to_s,
     "followers" => acct["followers_count"] || 0,
-    "posts_week" => 0,
+    # null = zatím neměřeno (nový účet bez předchozího snapshotu) → frontend zobrazí „—".
+    # Reálné číslo (vč. skutečné 0) doplní refresh_record při dalším běhu.
+    "posts_week" => nil,
     "created_at" => (acct["created_at"] ? acct["created_at"][0, 10] : nil),
     "last_status_at" => (acct["last_status_at"] ? acct["last_status_at"][0, 10] : nil),
     "profile_url" => "https://#{instance}/@#{username}",
@@ -201,16 +204,31 @@ def refresh_record(rec, snapshot = nil)
   # Skutečný bot příznak (autoritativní) — umožní vyřadit boty, co propustila discovery.
   rec["bot"] = acct["bot"] ? true : false
 
-  # Týdenní přírůstky (Skokani v Účtech) — rozdíl proti snapshotu z minulého běhu.
+  # Týdenní přírůstky (Skokani v Účtech) + příspěvků/týden — rozdíl proti snapshotu
+  # z minulého běhu.
   if snapshot
     cur_f = acct["followers_count"]
     cur_s = acct["statuses_count"]
-    prev = snapshot[id]
-    if prev
-      rec["followers_delta"] = cur_f - prev["followers"] if cur_f && prev["followers"]
-      rec["activity_delta"]  = cur_s - prev["statuses"]  if cur_s && prev["statuses"]
+    now   = Time.now.utc
+    prev  = snapshot[id]
+    rec["followers_delta"] = cur_f - prev["followers"] if prev && cur_f && prev["followers"]
+    if prev && cur_s && prev["statuses"]
+      delta = cur_s - prev["statuses"]
+      rec["activity_delta"] = delta
+      # posts_week = přírůstek příspěvků normalizovaný na 7 dní (zvládne i
+      # nepravidelné/ruční běhy). Záporný přírůstek (smazané posty) → 0.
+      # Bez prev["at"] (starý snapshot) předpokládáme týdenní kadenci.
+      days = prev["at"] ? ((now - Time.parse(prev["at"])) / 86_400.0) : 7.0
+      if days >= 0.5
+        rate = (delta / days) * 7.0
+        rec["posts_week"] = rate.negative? ? 0 : rate.round
+      end
+      # days < 0.5 (dva běhy hned po sobě) → ponech stávající posts_week.
+    else
+      # Chybí baseline (nový účet / první měření) → zatím neměřeno → „—".
+      rec["posts_week"] = nil
     end
-    snapshot[id] = { "followers" => cur_f, "statuses" => cur_s } if cur_f || cur_s
+    snapshot[id] = { "followers" => cur_f, "statuses" => cur_s, "at" => now.iso8601 } if cur_f || cur_s
   end
   rec
 end

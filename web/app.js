@@ -540,7 +540,7 @@
     if (full) return buildCard(full);
     return buildCard({
       id: u.a, display_name: u.n || u.a, avatar: u.av,
-      followers: u.fo || 0, posts_week: 0,
+      followers: u.fo || 0, posts_week: null,
       profile_url: 'https://' + u.i + '/@' + u.a.split('@')[0], _external: true
     });
   }
@@ -2131,7 +2131,7 @@
     var stats = document.createElement('div');
     stats.className = 'card-stats';
     stats.appendChild(stat(formatNumber(rec.followers), t('stat_followers')));
-    stats.appendChild(stat(rec.posts_week, t('stat_posts_week')));
+    stats.appendChild(stat(rec.posts_week == null ? '—' : rec.posts_week, t('stat_posts_week')));
     return stats;
   }
 
@@ -2331,7 +2331,7 @@
     var stats = document.createElement('div');
     stats.className = 'modal-stats';
     stats.appendChild(modalStat(formatNumber(rec.followers), t('stat_followers')));
-    stats.appendChild(modalStat(formatNumber(rec.posts_week), t('stat_posts_week')));
+    stats.appendChild(modalStat(rec.posts_week == null ? '—' : formatNumber(rec.posts_week), t('stat_posts_week')));
     stats.appendChild(modalStat(langLabel(rec.language), t('stat_language')));
     var added = relAdded(rec.created_at);
     if (added) stats.appendChild(modalStat('', added, true));
