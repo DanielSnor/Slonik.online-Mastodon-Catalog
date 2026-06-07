@@ -4,12 +4,17 @@
 # — typicky BOTY (objevování boty vyřazuje) nebo účty mimo CZ/SK filtr.
 #
 # Formát:  username@instance
+#   Pozn.: instanci uváděj tak, jak reálně odpovídá API (lookup). U serverů s
+#   odděleným WEB_DOMAIN (apex jen redirectuje) použij funkční host, např.
+#   adamhavelka@mastodon.prorocketeers.com (NE @prorocketeers.com).
 # Chování update_catalog.rb:
-#   - obejde CZ/SK filtr i vyřazení botů (vynucené zařazení),
+#   - obejde CZ/SK filtr i vyřazení botů (vynucené zařazení) — pro boty (zpravobot…)
+#     i pro lidi, které jazykový filtr omylem vynechá,
 #   - udělá lookup + AI kategorizaci (rodina/tagy/popis) jako u běžných účtů,
-#   - označí záznam bot: true (frontend ukáže badge „Automat"),
-#   - při každém běhu refreshne metriky vč. last_status_at (takže neaktivní bot
-#     se skryje a po publikaci se zase objeví, jako u ostatních účtů).
+#   - příznak bot / badge „Automat" bere z REÁLNÉHO API flagu účtu
+#     (člověk → bez badge, skutečný bot → badge),
+#   - při každém běhu refreshne metriky vč. last_status_at (neaktivní účet se skryje
+#     a po publikaci zase objeví, jako u ostatních).
 #
 # Přežije i rebuild data.json od nuly (přidá se znovu při příštím běhu).
 # Override cesty: MANUAL_FILE=/cesta/jine.txt
@@ -18,3 +23,4 @@
 # zpravobot@zpravobot.news
 # pocasimb@mastodonczech.cz
 vbabka@mastodon.social
+adamhavelka@mastodon.prorocketeers.com

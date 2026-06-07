@@ -38,6 +38,7 @@ mastodon.morwud.cz
 rodina-sucha.cz
 mastodon.starnet.cz
 toot.whatever.cz
+mastodon.prorocketeers.com  # ProRocketeers (firemní, apex prorocketeers.com jen redirect)
 
 # --- odebráno (2026-06, ruční audit) ---
 # nomu.sk, petrzprahy.cz, cynikobecny.cz   — doména není registrovaná

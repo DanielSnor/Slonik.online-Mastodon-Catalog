@@ -145,7 +145,9 @@ def categorize_candidate(cand, force: false)
     "source_platforms" => ["mastodon"],
     "source_details" => [{ "platform" => "mastodon", "handle" => acct_full,
                            "url" => "https://#{instance}/@#{username}" }],
-    "bot" => force,
+    # bot dle reálného API flagu účtu (ne podle toho, že jde o ruční zařazení) —
+    # ruční seznam slouží i pro lidi mimo CZ/SK filtr, ne jen pro boty.
+    "bot" => (acct["bot"] ? true : false),
     "_ai_description" => norm["description"],
   }
 end
@@ -537,8 +539,9 @@ def main
   result = result.each_with_index.select { |_r, i| keep.include?(i) }.map(&:first)
   dups = before_uniq - result.size
   log("Dedup (case-insensitive): sloučeno #{dups} duplicit") if dups.positive?
-  # Pojistka: účty z manual_accounts.txt mají vždy bot: true (i ty už v katalogu).
-  result.each { |r| r["bot"] = true if manual_set.include?(r["id"]) } if manual_set.any?
+  # Pozn.: ruční účty (manual_accounts.txt) si bot příznak drží z reálného API
+  # flagu (viz categorize_candidate / refresh_record) — žádné vynucování bot:true,
+  # ať lidé přidaní ručně (mimo CZ/SK filtr) nedostanou badge „Automat".
   write_json.call(CATALOG_PATH, result)
   # Snapshot metrik pro příští výpočet týdenních přírůstků (jen po refreshi).
   write_json.call(SNAPSHOT_PATH, snapshot) unless NO_REFRESH
