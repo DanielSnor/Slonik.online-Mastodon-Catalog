@@ -112,7 +112,7 @@ def account_identity(rec)
   {
     instance: instance,
     username: username,
-    # #1: numerické Mastodon id uložené při kategorizaci (build_data.rb) →
+    # #1: numerické Mastodon id uložené při kategorizaci (update_catalog.rb) →
     # collect přeskočí lookup. Fallback na lookup, když chybí.
     account_id: rec["mastodon_id"],
     display_name: rec["display_name"],

@@ -4,7 +4,7 @@
 #
 # Jeden zdroj pravdy pro: SYSTEM_PROMPT, build_prompt, call_claude (s prompt
 # cachingem), parse_ai_json, normalizaci výstupu, mapování rodin a ceník.
-# Používají: ai_categorize.rb i update_catalog.rb.
+# Používají: update_catalog.rb (kategorizace účtů) i classify_instances.rb (zaměření instancí).
 #
 # Konfigurace přes ENV:
 #   ANTHROPIC_API_KEY (povinné pro volání), AI_MODEL (default sonnet-4-5)

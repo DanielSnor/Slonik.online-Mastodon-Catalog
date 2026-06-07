@@ -3,7 +3,8 @@
 # Použití:
 #   - discover_accounts.rb scrapuje /api/v1/directory každé z nich
 #     (= lokální účty, i ty mimo seed graf) — viz seeds.txt pro graf.
-#   - ai_categorize.rb (dávková diagnostika) jede taky z tohoto seznamu.
+#   - build_instances.rb / classify_instances.rb berou přehled a zaměření instancí
+#     také z tohoto seznamu.
 #
 # Override cesty: INSTANCES_FILE=/cesta/jine.txt
 # Edituj volně — instance bez directory / mrtvé se jen přeskočí (zaloguje).

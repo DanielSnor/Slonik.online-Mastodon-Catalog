@@ -11,7 +11,7 @@
 #
 # Hloubka: 1 úroveň (jen přímí followers/following seedů).
 # Filtr: žádný CZ/SK filtr zde — jen vyřadí boty a deduplikuje. CZ/SK rozlišení
-#        dělá až ai_categorize.rb / build_data.rb při kategorizaci.
+#        dělá až update_catalog.rb při kategorizaci.
 #
 # Závislosti: pouze Ruby stdlib. Spuštění:
 #   ruby discover_accounts.rb

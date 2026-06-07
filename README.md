@@ -23,8 +23,6 @@ bin/                    spustitelné skripty (entry points)
   build_instances.rb      přehled instancí (v2/v1 /instance) → web/instances.json
   classify_instances.rb   zaměření instancí (joinmastodon + AI) → data/instance_topics.json
   deploy_web.rb           nahraje web bundle (web/) na Surfer (Files API)
-  ai_categorize.rb        dávková kategorizace instancí (diagnostika)
-  build_data.rb           bootstrap web/data.json z data/ai_results.json (historické)
   serve.rb                lokální statický HTTP server pro náhled (default web/)
   test_surfer.rb          ověření přístupu na Surfer (POST/GET/DELETE)
 
