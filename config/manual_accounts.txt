@@ -17,3 +17,4 @@
 # Příklad (odkomentuj a uprav):
 # zpravobot@zpravobot.news
 # pocasimb@mastodonczech.cz
+vbabka@mastodon.social
