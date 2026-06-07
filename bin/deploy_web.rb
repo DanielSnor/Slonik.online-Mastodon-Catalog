@@ -20,7 +20,7 @@
 require_relative "../lib/config"
 
 DRY = ARGV.include?("--dry-run")
-ASSETS = %w[index.html app.js app.css links.js header.jpg slonik.png daniel.jpg qr.jpg
+ASSETS = %w[index.html app.js app.css links.js header.jpg slonik.png oscloud.png daniel.jpg qr.jpg
             card-instance.png card-account.png card-account-detail.png card-post.png search-results.png].freeze
 DATA   = %w[data.json posts.json search.json users.json instances.json status.json].freeze
 

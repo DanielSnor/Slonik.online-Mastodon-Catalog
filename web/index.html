@@ -26,6 +26,9 @@
   <meta name="twitter:image" content="https://slonik.online/header.jpg">
 
   <link rel="stylesheet" href="app.css">
+
+  <!-- Anonymní návštěvnost (Umami, self-hosted na OSCLOUD; bez cookies, bez osobních dat) -->
+  <script defer src="https://analytics.oscloud.cz/script.js" data-website-id="07a16f69-8744-4034-bba3-fef3ef59b9af"></script>
 </head>
 <body data-updated="2026-05-31">
   <header class="site-header">
@@ -845,7 +848,9 @@
           <h2>Technické řešení</h2>
           <p>Sloník.online je úmyslně jednoduchý: web je <strong>čistě statický</strong>
             (HTML, CSS a trocha JavaScriptu), bez serverové aplikace, bez přihlašování
-            a bez sledování návštěvníků. Veškerá „chytrost" se odehrává předem v dávkových
+            a bez cookies. Návštěvnost měříme jen <strong>anonymně a agregovaně</strong>
+            (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> na OSCLOUD),
+            bez osobních údajů. Veškerá „chytrost" se odehrává předem v dávkových
             skriptech — web jen zobrazuje hotová data.</p>
           <h3>Sběr dat</h3>
           <p>Na samostatném serveru běží sada skriptů v jazyce <strong>Ruby</strong>, které
@@ -882,7 +887,9 @@
           <h2>Technical details</h2>
           <p>Sloník.online is deliberately simple: the site is <strong>fully static</strong>
             (HTML, CSS and a bit of JavaScript), with no server application, no login and no
-            visitor tracking. All the “smarts” happen beforehand in batch scripts — the site
+            cookies. Traffic is measured only <strong>anonymously and in aggregate</strong>
+            (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> on OSCLOUD),
+            with no personal data. All the “smarts” happen beforehand in batch scripts — the site
             just displays ready-made data.</p>
           <h3>Data collection</h3>
           <p>A separate server runs a set of <strong>Ruby</strong> scripts that regularly (via
@@ -990,7 +997,11 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <p><span id="footer-indexed" hidden><span data-i18n="footer_indexed">Vyhledávání naposledy indexováno</span> <strong id="indexed-date"></strong>. </span><span data-i18n="footer_updated">Katalog naposledy aktualizován</span> <strong>31. 5. 2026</strong><span id="updated-relative" class="updated-relative"></span>.</p>
+      <p class="footer-meta"><span id="footer-indexed" hidden><span data-i18n="footer_indexed">Vyhledávání naposledy indexováno</span> <strong id="indexed-date"></strong>. </span><span data-i18n="footer_updated">Katalog naposledy aktualizován</span> <strong>31. 5. 2026</strong><span id="updated-relative" class="updated-relative"></span>.</p>
+      <a class="footer-sponsor" href="https://oscloud.cz" target="_blank" rel="noopener" title="OSCLOUD">
+        <span class="footer-sponsor-text" data-i18n="footer_sponsor">Tento web běží díky podpoře</span>
+        <img class="footer-sponsor-logo" src="oscloud.png" alt="OSCLOUD" height="24" onerror="this.style.display='none'">
+      </a>
     </div>
   </footer>
 
