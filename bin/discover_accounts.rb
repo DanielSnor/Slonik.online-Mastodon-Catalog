@@ -92,7 +92,8 @@ def add_account(into, acc, host)
   return false if acc["bot"]
 
   key = full_acct(acc, host)
-  return false if DEAD_INSTANCES.include?(key.split("@").last.to_s.downcase)
+  inst = key.split("@").last.to_s.downcase
+  return false if DEAD_INSTANCES.include?(inst) || MastodonAPI.bridge?(inst)
   into[key] ||= {
     "acct" => key,
     "username" => acc["username"],

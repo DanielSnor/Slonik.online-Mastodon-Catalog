@@ -112,6 +112,13 @@ class MastodonAPI
 
   # ---- statické text utility (bez stavu) ----
 
+  # Bridge/proxy hosty (Bluesky/Nostr/Flipboard) — neimplementují /accounts/lookup,
+  # jsou to jen proxy účty cizích sítí. Do katalogu/indexu nepatří → přeskakujeme.
+  def self.bridge?(host)
+    h = host.to_s.downcase
+    h.end_with?(".brid.gy") || %w[bsky.brid.gy mostr.pub flipboard.com].include?(h)
+  end
+
   # Odstraní HTML. Inline tagy BEZ mezery (Mastodon obaluje hashtagy/URL do spanů),
   # blokové (</p>, <br>) → zalomení. Dekóduje základní entity.
   def self.strip_html(html)

@@ -50,6 +50,10 @@ RETYPE          = ARGV.include?("--retype")          # přeznač type u aktivní
 CATALOG_PATH    = ENV["CATALOG_PATH"] || File.join(Paths::WEB_DIR, "data.json")
 CANDIDATES_PATH = ENV["CANDIDATES_PATH"] || File.join(Paths::DATA_DIR, "discovered_accounts.json")
 SKIPPED_PATH    = ENV["SKIPPED_PATH"] || File.join(Paths::DATA_DIR, "skipped_noncz.json")
+# Cache selhaných lookupů (acct → datum) — mrtvé/nekompatibilní instance, smazané
+# účty… nezkoušet každý běh. Expirují po FAILED_TTL_DAYS (pak se zkusí znovu).
+LOOKUP_FAILED_PATH = ENV["LOOKUP_FAILED_PATH"] || File.join(Paths::DATA_DIR, "lookup_failed.json")
+FAILED_TTL_DAYS    = (ENV["FAILED_TTL_DAYS"] || "30").to_i
 # Snapshot metrik z minulého běhu → týdenní přírůstky (Skokani v Účtech).
 SNAPSHOT_PATH   = ENV["SNAPSHOT_PATH"] || File.join(Paths::DATA_DIR, "metrics_snapshot.json")
 # manual_accounts.txt / blocklist.txt se načítají přes CatalogConfig.read_list
@@ -95,7 +99,10 @@ def categorize_candidate(cand, force: false)
   acct_full = "#{username}@#{instance}"
 
   acct = API.lookup(instance, username)
-  return (log("  ❌ @#{acct_full}: lookup selhal") && nil) unless acct
+  unless acct
+    log("  ❌ @#{acct_full}: lookup selhal")
+    return :lookup_failed   # cachovatelné selhání (mrtvá/nekompatibilní instance, smazaný účet)
+  end
 
   # Bota nezařazujeme (autoritativní příznak z přímého lookupu) — pokud nejde
   # o ruční vynucení (manual_accounts.txt). Discovery boty občas propustí, když
@@ -353,12 +360,25 @@ def main
                   Set.new(Array(JSON.parse(File.read(SKIPPED_PATH, encoding: "UTF-8"))))
                 end
 
+  # Cache selhaných lookupů (acct → datum). Účty starší než FAILED_TTL_DAYS se
+  # „odpustí" (zkusí znovu — instance se mohla vrátit). RECHECK_SKIPPED resetuje.
+  failed_map = if RECHECK_SKIPPED || !File.exist?(LOOKUP_FAILED_PATH)
+                 {}
+               else
+                 (JSON.parse(File.read(LOOKUP_FAILED_PATH, encoding: "UTF-8")) rescue {})
+               end
+  failed_map = {} unless failed_map.is_a?(Hash)
+  failed_cutoff = Date.today - FAILED_TTL_DAYS
+  failed_map.select! { |_a, d| (Date.parse(d.to_s) rescue Date.new(1970)) >= failed_cutoff }
+  failed_set = failed_map.keys.to_set
+
   # Pozn.: Mastodon handle je case-insensitive (@OttoVonWenkoff == @ottovonwenkoff),
   # proto porovnáváme přes downcase, ať nevzniknou duplicity lišící se velikostí písmen.
   existing_ids = catalog.map { |r| r["id"].to_s.downcase }.to_set
   new_cands = candidates.reject do |c|
     existing_ids.include?(c["acct"].to_s.downcase) || skipped_set.include?(c["acct"]) ||
-      blocklist.include?(c["acct"]) || dead_instances.include?(c["instance"].to_s.downcase)
+      blocklist.include?(c["acct"]) || dead_instances.include?(c["instance"].to_s.downcase) ||
+      failed_set.include?(c["acct"]) || MastodonAPI.bridge?(c["instance"])
   end
   new_cands = new_cands.first(LIMIT_NEW) if LIMIT_NEW.positive?
 
@@ -484,16 +504,17 @@ def main
 
     checkpoint = lambda do
       write_json.call(SKIPPED_PATH, skipped_set.to_a.sort)
+      write_json.call(LOOKUP_FAILED_PATH, failed_map)
       write_json.call(CATALOG_PATH, refreshed + added)
     end
 
     last_upload_at = 0
     new_cands.each_with_index do |c, i|
       rec = categorize_candidate(c)
-      if rec == :skipped_noncz || rec == :skipped_bot
-        skipped_set << c["acct"]                 # zapamatuj → příště nedotazovat
-      elsif rec
-        added << rec
+      case rec
+      when :skipped_noncz, :skipped_bot then skipped_set << c["acct"]  # ne-CZ/SK / bot → cache
+      when :lookup_failed then failed_map[c["acct"]] = Date.today.to_s # selhal lookup → cache (s expirací)
+      when Hash then added << rec
       end
       sleep(AI_DELAY) if AI_DELAY.positive?
 
@@ -558,6 +579,8 @@ def main
   # flagu (viz categorize_candidate / refresh_record) — žádné vynucování bot:true,
   # ať lidé přidaní ručně (mimo CZ/SK filtr) nedostanou badge „Automat".
   write_json.call(CATALOG_PATH, result)
+  # Cache selhaných lookupů (vč. prořezání expirovaných) — i pro refresh-only běh.
+  write_json.call(LOOKUP_FAILED_PATH, failed_map)
   # Snapshot metrik pro příští výpočet týdenních přírůstků (jen po refreshi).
   write_json.call(SNAPSHOT_PATH, snapshot) unless NO_REFRESH
   log("")
