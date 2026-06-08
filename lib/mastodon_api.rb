@@ -20,9 +20,19 @@ require "net/http"
 require "json"
 require "uri"
 require "time"
+require "openssl"
 
 class MastodonAPI
   USER_AGENT = "mastokatalog/1.0 (+https://katalog-test.zpravobot.news; research)"
+
+  # Po tolika selháních SPOJENÍ na daný host ho v rámci běhu přestaneme dotazovat
+  # (mrtvé/zaniklé instance jako mastodon.arch-linux.cz jinak každý lookup blokují
+  # ~10 s timeoutem). Reset je automatický — @dead_hosts žije jen po dobu instance.
+  DEAD_HOST_LIMIT = 2
+  CONNECT_ERRORS = [
+    Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED, Errno::EHOSTUNREACH,
+    Errno::ETIMEDOUT, Errno::ECONNRESET, SocketError, OpenSSL::SSL::SSLError
+  ].freeze
 
   def initialize(logger: nil, delay: nil, token: nil)
     @log = logger || ->(_m) {}
@@ -30,10 +40,12 @@ class MastodonAPI
     @token = token || ENV["MASTODON_TOKEN"]
     @floor = (ENV["RATE_REMAINING_FLOOR"] || "10").to_i
     @rate = {} # host => { remaining:, reset_at: }
+    @dead_hosts = Hash.new(0) # host => počet selhání spojení (per běh)
   end
 
   # Vrátí [http_code, parsed_json_or_nil, link_header]. Nehází výjimky.
   def get(host, path)
+    return [0, nil, nil] if @dead_hosts[host] >= DEAD_HOST_LIMIT # nedostupný host → přeskoč
     respect_rate_limit(host)
     base, query = path.split("?", 2)
     uri = URI::HTTPS.build(host: host, path: base, query: query)
@@ -62,6 +74,11 @@ class MastodonAPI
     sleep(@delay) if @delay.positive?
     parsed = (JSON.parse(resp.body) if code == 200 && resp["content-type"].to_s.include?("json"))
     [code, parsed, resp["link"]]
+  rescue *CONNECT_ERRORS => e
+    @dead_hosts[host] += 1
+    dead = @dead_hosts[host] == DEAD_HOST_LIMIT ? " → host označen za nedostupný, dál přeskakuji" : ""
+    @log.call("  ⚠️  GET #{host}#{path} → #{e.class}: #{e.message}#{dead}")
+    [0, nil, nil]
   rescue StandardError => e
     @log.call("  ⚠️  GET #{host}#{path} → #{e.class}: #{e.message}")
     [0, nil, nil]

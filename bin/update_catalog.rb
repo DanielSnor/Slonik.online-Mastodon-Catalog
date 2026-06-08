@@ -334,6 +334,18 @@ def main
     log("Blocklist: #{blocklist.size} účtů | odebráno z katalogu: #{removed}") if removed.positive? || DRY_RUN
   end
 
+  # Mrtvé/zaniklé instance (dead_instances.txt) — doménová úroveň. Účty z nich
+  # vyřadíme z katalogu a nebereme jako kandidáty: federovaný graf je drží jako
+  # „duchy" (např. mastodon.arch-linux.cz: 1500+), lookup na ně jen timeoutuje.
+  dead_instances = CatalogConfig.read_list("dead_instances.txt", env_key: "DEAD_INSTANCES_FILE")
+                                .map(&:downcase).to_set
+  if dead_instances.any?
+    before = catalog.size
+    catalog = catalog.reject { |r| dead_instances.include?(r["id"].to_s.split("@").last.to_s.downcase) }
+    removed = before - catalog.size
+    log("Mrtvé instance: #{dead_instances.size} domén | odebráno z katalogu: #{removed}") if removed.positive? || DRY_RUN
+  end
+
   # Cache dříve přeskočených ne-CZ/SK účtů → nedotazovat je znovu.
   skipped_set = if RECHECK_SKIPPED || !File.exist?(SKIPPED_PATH)
                   Set.new
@@ -345,7 +357,8 @@ def main
   # proto porovnáváme přes downcase, ať nevzniknou duplicity lišící se velikostí písmen.
   existing_ids = catalog.map { |r| r["id"].to_s.downcase }.to_set
   new_cands = candidates.reject do |c|
-    existing_ids.include?(c["acct"].to_s.downcase) || skipped_set.include?(c["acct"]) || blocklist.include?(c["acct"])
+    existing_ids.include?(c["acct"].to_s.downcase) || skipped_set.include?(c["acct"]) ||
+      blocklist.include?(c["acct"]) || dead_instances.include?(c["instance"].to_s.downcase)
   end
   new_cands = new_cands.first(LIMIT_NEW) if LIMIT_NEW.positive?
 

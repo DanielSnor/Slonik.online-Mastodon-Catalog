@@ -1,0 +1,21 @@
+# Mrtvé / zaniklé instance — jeden host na řádek (# = komentář).
+#
+# Účty z těchto domén se PŘESKAKUJÍ: discovery je nepřidá do kandidátů a
+# update_catalog je nezpracovává (žádný lookup, ani jako cíl migrace). Řeší to,
+# že federovaný sociální graf pořád obsahuje „duchy" ze zaniklých instancí
+# (typicky mastodon.arch-linux.cz: 1500+ účtů, každý lookup = ~10 s timeout).
+#
+# Pozn.: lib/mastodon_api má navíc AUTO-cache — host, který 2× selže na spojení,
+# se po zbytek běhu přeskakuje sám. Tenhle seznam je explicitní (zastaví duchy
+# už v discovery) a doplňuje ho ručně.
+#
+# Override cesty: DEAD_INSTANCES_FILE=/cesta/jine.txt
+
+mastodon.arch-linux.cz
+masto.den1.cz
+mastodon.gmb.cz
+mastodon.cxm.cz
+nomu.sk
+petrzprahy.cz
+cynikobecny.cz
+fediverse.cz

@@ -48,6 +48,10 @@ end.freeze
 
 # CZ/SK instance (instances.txt) — scrapujeme jejich /api/v1/directory (lokální účty).
 INSTANCES = CatalogConfig.read_list("instances.txt", env_key: "INSTANCES_FILE").freeze
+# Mrtvé/zaniklé instance — účty z nich vůbec nepřidáváme (federovaný graf je drží
+# jako „duchy"; jinak by zbytečně zahltily kandidáty a v update jen timeoutovaly).
+DEAD_INSTANCES = CatalogConfig.read_list("dead_instances.txt", env_key: "DEAD_INSTANCES_FILE")
+                              .map(&:downcase).freeze
 
 # Kolik účtů max z jednoho directory (0 = bez limitu).
 MAX_PER_DIRECTORY = (ENV["MAX_PER_DIRECTORY"] || "0").to_i
@@ -88,6 +92,7 @@ def add_account(into, acc, host)
   return false if acc["bot"]
 
   key = full_acct(acc, host)
+  return false if DEAD_INSTANCES.include?(key.split("@").last.to_s.downcase)
   into[key] ||= {
     "acct" => key,
     "username" => acc["username"],
