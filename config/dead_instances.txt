@@ -11,6 +11,7 @@
 #
 # Override cesty: DEAD_INSTANCES_FILE=/cesta/jine.txt
 
+# --- ručně potvrzené dříve (zrušené/zaparkované) ---
 mastodon.arch-linux.cz
 masto.den1.cz
 mastodon.gmb.cz
@@ -19,3 +20,46 @@ nomu.sk
 petrzprahy.cz
 cynikobecny.cz
 fediverse.cz
+
+# --- z auditu logů 2026-06 (ověřeno živě: DNS neexistuje / host nedostupný / cert) ---
+akkoma.pebcak.me
+akkoma.simulacrum-emporium.eu
+alt.lawndale.space
+astrodon.social
+bake-danuki.store
+don.tadeas.net
+floe.earth
+gomastodon.cz
+gotosocial.mysteriar.ch
+gts.80fk.net
+gts.fname.ca
+happyfedi.better-than.tv
+hlidacstatu.social
+kishinjou.chaotic.ninja
+m.deepspace.cafe
+ma9y.net
+mastodon.joolstorrentecalo.com
+mastodon.lol
+mastodon.ryzizub.com
+mastodon.staycuriousandkeepsmil.in
+mastodon.thesuntrip.com
+mastodonslovak.sk
+matrix.gb.net
+merta.social
+merta.xyz
+odgaard.ca
+onevery.ignorelist.com
+pirateleaks.online
+pol.social
+postblue.social
+praha.social
+px.mathias777.com
+social.80fk.net
+social.sukany.cz
+spse.dev
+the.asbestos.cafe
+tootz.org
+uoa.social
+wecraft.beer
+frel.cz
+webs.node9.org

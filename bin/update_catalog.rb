@@ -123,7 +123,7 @@ def categorize_candidate(cand, force: false)
   norm = AICLIENT.normalize(parsed, res)
   fam = AICLIENT.map_family(norm["family"])
   cache_note = res[:cache_read_tokens].to_i.positive? ? " 💾" : ""
-  log("  #{force ? '🤖' : '✅'} @#{acct_full} → #{fam} [#{norm['tags'].join(', ')}]#{cache_note}")
+  log("  #{force ? '➕' : '✅'} @#{acct_full} → #{fam} [#{norm['tags'].join(', ')}]#{cache_note}")
 
   {
     "id" => acct_full,
@@ -383,7 +383,7 @@ def main
     if manual_new.any?
       log("")
       log("=== DRY-RUN: ruční účty (manual_accounts.txt) — vynuceně, bot: true ===")
-      manual_new.each { |h| log("  🤖 #{h}") }
+      manual_new.each { |h| log("  ➕ #{h}") }
     end
     log("")
     log("Odhad ceny (HORNÍ MEZ, bez CZ/SK filtru) #{new_cands.size + manual_new.size} účtů: " \
@@ -515,14 +515,16 @@ def main
         "boti: #{STATS[:skipped_bot]} | úspora ~$#{format('%.2f', saved * 0.0079)}")
   end
 
-  # 2b) Ruční účty (manual_accounts.txt) — vynuceně, bot: true, obejde filtr.
+  # 2b) Ruční účty (manual_accounts.txt) — vynucené zařazení (obejde CZ/SK filtr
+  # i vyřazení botů). bot příznak se bere z REÁLNÉHO API flagu (viz categorize_candidate),
+  # ne vynuceně — lidé tu mají bot:false, skuteční boti bot:true.
   manual_added = []
   if !NO_CATEGORIZE && manual_new.any?
     if AICLIENT.instance_variable_get(:@api_key).to_s.empty?
       abort("❌ Chybí ANTHROPIC_API_KEY (nutné i pro ruční účty)")
     end
     log("")
-    log("── Ruční účty (#{manual_new.size}, vynuceně bot:true) ──")
+    log("── Ruční účty (#{manual_new.size}, vynucené zařazení, bot dle reality) ──")
     manual_new.each do |h|
       u, inst = h.split("@", 2)
       next log("  ⚠️  špatný formát handle: #{h}") unless u && inst
