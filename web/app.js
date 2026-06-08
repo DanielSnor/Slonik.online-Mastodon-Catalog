@@ -2693,15 +2693,26 @@
     fetch('status.json', { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) {
-        if (!s || !s.search_indexed) return;
-        var d = new Date(s.search_indexed);
-        if (isNaN(d.getTime())) return;
-        var el = document.getElementById('indexed-date');
-        var wrap = document.getElementById('footer-indexed');
-        if (!el || !wrap) return;
-        var mm = d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes();
-        el.textContent = d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + ' ' + d.getHours() + ':' + mm;
-        wrap.hidden = false;
+        if (!s) return;
+        if (s.search_indexed) {
+          var d = new Date(s.search_indexed);
+          var el = document.getElementById('indexed-date');
+          var wrap = document.getElementById('footer-indexed');
+          if (!isNaN(d.getTime()) && el && wrap) {
+            var mm = d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes();
+            el.textContent = d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + ' ' + d.getHours() + ':' + mm;
+            wrap.hidden = false;
+          }
+        }
+        if (s.catalog_updated) {                            // datum katalogu — dynamicky (jinak fallback v HTML)
+          var cd = new Date(s.catalog_updated);
+          if (!isNaN(cd.getTime())) {
+            var ce = document.getElementById('catalog-date');
+            if (ce) ce.textContent = cd.getDate() + '. ' + (cd.getMonth() + 1) + '. ' + cd.getFullYear();
+            document.body.setAttribute('data-updated', cd.toISOString().slice(0, 10));
+            renderUpdatedRelative();
+          }
+        }
       })
       .catch(function () {});
   }

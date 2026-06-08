@@ -48,6 +48,7 @@ RECHECK_SKIPPED = ARGV.include?("--recheck-skipped") # ignoruj cache přeskočen
 RETYPE          = ARGV.include?("--retype")          # přeznač type u aktivních účtů
 
 CATALOG_PATH    = ENV["CATALOG_PATH"] || File.join(Paths::WEB_DIR, "data.json")
+STATUS_PATH     = ENV["STATUS_PATH"] || File.join(Paths::WEB_DIR, "status.json")
 CANDIDATES_PATH = ENV["CANDIDATES_PATH"] || File.join(Paths::DATA_DIR, "discovered_accounts.json")
 SKIPPED_PATH    = ENV["SKIPPED_PATH"] || File.join(Paths::DATA_DIR, "skipped_noncz.json")
 # Cache selhaných lookupů (acct → datum) — mrtvé/nekompatibilní instance, smazané
@@ -587,11 +588,19 @@ def main
   log("✅ Hotovo. Katalog: #{catalog.size} → #{result.size} " \
       "(nově #{added.size}, ruční #{manual_added.size}). Záloha: #{backup}")
 
+  # Datum aktualizace katalogu → status.json (patička webu). Merge, ať nepřepíšeme
+  # search_indexed od build-search.
+  status = (JSON.parse(File.read(STATUS_PATH, encoding: "UTF-8")) rescue {})
+  status = {} unless status.is_a?(Hash)
+  status["catalog_updated"] = Time.now.utc.iso8601
+  write_json.call(STATUS_PATH, status)
+
   # 4) Upload na Surfer
   if NO_UPLOAD
-    log("⏭  --no-upload → data.json zůstává jen lokálně.")
+    log("⏭  --no-upload → data.json + status.json zůstávají jen lokálně.")
   else
     Surfer.upload(CATALOG_PATH, logger: method(:log))
+    Surfer.upload(STATUS_PATH, logger: method(:log))
   end
 end
 
