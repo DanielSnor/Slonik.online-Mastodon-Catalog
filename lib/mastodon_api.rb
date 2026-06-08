@@ -34,6 +34,12 @@ class MastodonAPI
     Errno::ETIMEDOUT, Errno::ECONNRESET, SocketError, OpenSSL::SSL::SSLError
   ].freeze
 
+  # Instance s odděleným WEB_DOMAIN: handle je @user@<klíč>, ale API/server běží na
+  # <hodnotě>. Lookup/statusy tiše přesměrujeme na funkční host — handle v katalogu
+  # zůstává kanonický (@user@vivaldi.net). Apex těchto domén náš klient (nesleduje
+  # redirecty) sám nezvládne.
+  HOST_ALIASES = { "vivaldi.net" => "social.vivaldi.net" }.freeze
+
   def initialize(logger: nil, delay: nil, token: nil)
     @log = logger || ->(_m) {}
     @delay = (delay || ENV["MASTODON_DELAY"] || "1.0").to_f
@@ -45,6 +51,7 @@ class MastodonAPI
 
   # Vrátí [http_code, parsed_json_or_nil, link_header]. Nehází výjimky.
   def get(host, path)
+    host = HOST_ALIASES[host] || host                            # WEB_DOMAIN split → funkční API host
     return [0, nil, nil] if @dead_hosts[host] >= DEAD_HOST_LIMIT # nedostupný host → přeskoč
     respect_rate_limit(host)
     base, query = path.split("?", 2)
