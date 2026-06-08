@@ -5,8 +5,7 @@
 #   ./update.sh --dry-run            # jen diff + odhad ceny
 #   ./update.sh --no-categorize      # jen refresh (zdarma): aktivita, vyřazení botů
 #   ./update.sh --retype             # přeznač type u aktivních
-#   ./update.sh                      # plná aktualizace + upload; pak SÁM spustí
-#                                    # refresh-instances (jen bez argumentů = cron běh)
+#   ./update.sh                      # plná aktualizace + upload
 #   ./update.sh --bg [args…]         # spustí na pozadí → logs/update.log (+ .pid)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -33,12 +32,4 @@ if [ "${1:-}" = "--bg" ]; then
   exit 0
 fi
 
-ruby bin/update_catalog.rb "$@"
-
-# Standardní (cron) běh bez argumentů → rovnou obnova instancí. Zřetězeno schválně,
-# aby refresh-instances vždy běžel AŽ po dokončení updatu (bez ohledu na jeho délku).
-# Ruční běhy s flagy (--dry-run, --retype, --no-upload…) řetěz nespouští — instance
-# si pak pustíš sám přes ./refresh-instances.sh. (Jeho výstup jde do logs/instances.log.)
-if [ $# -eq 0 ]; then
-  exec ./refresh-instances.sh
-fi
+exec ruby bin/update_catalog.rb "$@"

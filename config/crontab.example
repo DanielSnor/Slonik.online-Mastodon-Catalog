@@ -35,17 +35,11 @@
 # users.json + status.json, upload. (Plný rebuild ručně: ./build-search.sh --rebuild)
 0 2,8,14,20 * * *  /app/data/slonik/build-search.sh
 
-# ────────────────── TÝDNĚ (pondělí, v pořadí) ─────────────
-
-# Konsolidace postů minulého týdne → web/posts.json (až po pondělním collectu).
-15 3 * * 1      /app/data/slonik/consolidate.sh
-
-# Objevování účtů z instancí + sociálního grafu (zdarma).
-15 4 * * 1      /app/data/slonik/discover.sh
-
-# Aktualizace katalogu (PO discovery): refresh aktivity + týdenní přírůstky,
-# dokategorizace NOVÝCH účtů, dedup, vyřazení botů, upload.
-# Pozn.: bez argumentů (přesně tenhle cron běh) si update.sh na konci SÁM zřetězí
-# refresh-instances (přehled + „Oblast" instancí) — vždy až po dokončení updatu,
-# bez ohledu na jeho délku. Proto refresh-instances NEMÁ samostatný cron řádek.
-15 5 * * 1      /app/data/slonik/update.sh
+# ────────────────── TÝDNĚ (pondělí) ─────────────
+# Jeden řádek = celý týdenní řetěz SEKVENČNĚ (weekly.sh):
+#   consolidate → discover → update → refresh-instances
+# Pořadí i závislosti tak drží bez ohledu na délku kroků (žádné hádání mezer).
+# Start v 03:15 = až po pondělním collectu (02:15), aby konsolidace měla i neděli.
+# Selhání jednoho kroku nezastaví zbytek. Stavové značky → logs/weekly.log,
+# detaily → logs/{consolidate,discover,update,instances}.log.
+15 3 * * 1      /app/data/slonik/weekly.sh

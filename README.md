@@ -394,14 +394,17 @@ Denně:
   → `search.json` + `users.json` + `status.json`. Čerstvost vs. upload (~21 MB/běh);
   6 h je rozumný kompromis. Plný rebuild ručně: `./build-search.sh --rebuild`.
 
-Týdně (pondělí, **v tomto pořadí**):
-- **consolidate** **03:15** (týdenní žebříčky postů) — až **po** pondělním collectu,
-  který teprve sesbírá neděli; jinak by v žebříčku neděle chyběla.
-- **discover** **04:15** (přegeneruje kandidáty z instancí + grafu)
-- **update_catalog** **05:15** (refresh + týdenní přírůstky + dedup + dokategorizace nových).
-  Bez argumentů (= tenhle cron běh) si na konci **sám zřetězí `refresh-instances`** —
-  vždy až po dokončení updatu (bez ohledu na jeho délku), takže refresh-instances
-  **nemá samostatný cron řádek** (běh nad polovičně updatovaným katalogem nehrozí).
+Týdně (pondělí) — **jeden** cron řádek `weekly.sh` v **03:15** (až po pondělním
+collectu 02:15, aby konsolidace měla i neděli), který spustí celý řetěz **sekvenčně**:
+1. **consolidate** (týdenní žebříčky postů → `posts.json`)
+2. **discover** (přegeneruje kandidáty z instancí + grafu)
+3. **update_catalog** (refresh + týdenní přírůstky + dedup + dokategorizace nových)
+4. **refresh-instances** (přehled + „Oblast" instancí → `instances.json`)
+
+Řetězení (místo časovaných řádků s mezerami) drží pořadí i závislosti bez ohledu
+na délku kroků — refresh-instances tak nikdy neběží nad polovičně updatovaným
+katalogem. Selhání jednoho kroku nezastaví zbytek. Stavové značky → `logs/weekly.log`,
+detaily do logů jednotlivých kroků.
 
 `refresh-instances.sh` zřetězí **build (lokálně) → classify → build (upload)**, takže
 i čerstvě přidaná instance dostane „Oblast" **hned** (vyřešená dvoufázová závislost);
