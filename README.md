@@ -398,8 +398,10 @@ Týdně (pondělí, **v tomto pořadí**):
 - **consolidate** **03:15** (týdenní žebříčky postů) — až **po** pondělním collectu,
   který teprve sesbírá neděli; jinak by v žebříčku neděle chyběla.
 - **discover** **04:15** (přegeneruje kandidáty z instancí + grafu)
-- **update_catalog** **05:15** (refresh + týdenní přírůstky + dedup + dokategorizace nových)
-- **refresh-instances** **06:00** (přehled + zaměření instancí v jednom kroku → `instances.json`)
+- **update_catalog** **05:15** (refresh + týdenní přírůstky + dedup + dokategorizace nových).
+  Bez argumentů (= tenhle cron běh) si na konci **sám zřetězí `refresh-instances`** —
+  vždy až po dokončení updatu (bez ohledu na jeho délku), takže refresh-instances
+  **nemá samostatný cron řádek** (běh nad polovičně updatovaným katalogem nehrozí).
 
 `refresh-instances.sh` zřetězí **build (lokálně) → classify → build (upload)**, takže
 i čerstvě přidaná instance dostane „Oblast" **hned** (vyřešená dvoufázová závislost);

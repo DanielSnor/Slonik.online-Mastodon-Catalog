@@ -43,11 +43,9 @@
 # Objevování účtů z instancí + sociálního grafu (zdarma).
 15 4 * * 1      /app/data/slonik/discover.sh
 
-# Aktualizace katalogu (PO discovery): refresh aktivity + týdenní přírůstky
-# (followers/activity delta), dokategorizace NOVÝCH účtů, dedup, vyřazení botů, upload.
+# Aktualizace katalogu (PO discovery): refresh aktivity + týdenní přírůstky,
+# dokategorizace NOVÝCH účtů, dedup, vyřazení botů, upload.
+# Pozn.: bez argumentů (přesně tenhle cron běh) si update.sh na konci SÁM zřetězí
+# refresh-instances (přehled + „Oblast" instancí) — vždy až po dokončení updatu,
+# bez ohledu na jeho délku. Proto refresh-instances NEMÁ samostatný cron řádek.
 15 5 * * 1      /app/data/slonik/update.sh
-
-# Přehled + zaměření instancí v JEDNOM kroku (PO update): build (lokálně) →
-# classify (joinmastodon + AI) → build (zapeče kategorie + upload). Tím dostane
-# i nově přidaná instance „Oblast" hned. AI klíč z ~/.anthropic_key.
-0 6 * * 1       /app/data/slonik/refresh-instances.sh
