@@ -10,3 +10,4 @@
 # Jedna doména na řádek (# = komentář). Override: FEEDS_FILE=/cesta/jine.txt
 
 zpravobot.news
+rockosbasilisk.com   # SK instance, většinově igišovi boti — účet igisho zůstává v katalogu
