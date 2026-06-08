@@ -120,6 +120,15 @@ def record(status, instance)
   }
 end
 
+# Slim post pro search.json — autorská pole (kromě account_acct) frontend dopočítá:
+# username/instance z acct, jméno/avatar z users.json. Nepíšeme je tedy do každého
+# postu (u chrličů jako zpravobot se jinak avatar/jméno opakují tisíckrát).
+SLIM_KEYS = %w[id url account_acct account_family content_html
+               reblogs_count favourites_count created_at has_media hashtags].freeze
+def slim_post(p)
+  SLIM_KEYS.each_with_object({}) { |k, h| h[k] = p[k] if p.key?(k) }
+end
+
 # Přírůstkové stránkování: od nejnovějšího zpět; bere posty NOVĚJŠÍ než poslední
 # viděné id daného zdroje (STATE) a zároveň ≥ CUTOFF. První běh (bez stavu) =
 # plné stažení do CUTOFF. Aktualizuje NEW_STATE na nejnovější viděné id.
@@ -200,12 +209,30 @@ def main
   seen = {}
 
   # Cutoff pro daný post: feeds (boti) mají kratší retenci než běžné instance.
-  post_cutoff = ->(p) { feeds_set.include?(p["account_instance"]) ? FEEDS_CUTOFF : CUTOFF }
+  # Instanci bereme z account_acct (slim index nemusí mít account_instance pole).
+  inst_of     = ->(p) { (p["account_instance"] || p["account_acct"].to_s.split("@").last).to_s }
+  post_cutoff = ->(p) { feeds_set.include?(inst_of.call(p)) ? FEEDS_CUTOFF : CUTOFF }
 
-  # Základ = existující index (mimo --rebuild); rovnou vyřaď posty starší než retence.
+  # Základ = existující (slim) index (mimo --rebuild); rovnou vyřaď posty starší než
+  # retence. Autorská pole dotáhneme z users.json + odvodíme z acct, ať je build_users
+  # i facety mají v paměti k dispozici (na disku už v každém postu nejsou).
   if !REBUILD && File.exist?(OUT_PATH)
+    base_users = {}
+    if File.exist?(USERS_PATH)
+      (JSON.parse(File.read(USERS_PATH, encoding: "UTF-8"))["users"] rescue []).each { |u| base_users[u["a"]] = u }
+    end
     old = (JSON.parse(File.read(OUT_PATH, encoding: "UTF-8"))["posts"] rescue [])
-    old.each { |p| seen[p["id"]] = p if (Time.parse(p["created_at"]) rescue Time.at(0)) >= post_cutoff.call(p) }
+    old.each do |p|
+      a = p["account_acct"].to_s
+      p["account_username"] ||= a.split("@").first
+      p["account_instance"] ||= a.split("@", 2)[1]
+      if (u = base_users[a])
+        p["account_display_name"] ||= u["n"]
+        p["account_avatar"]       ||= u["av"]
+        p["account_followers"]    ||= u["fo"]
+      end
+      seen[p["id"]] = p if (Time.parse(p["created_at"]) rescue Time.at(0)) >= post_cutoff.call(p)
+    end
     log("  Základ z existujícího indexu: #{seen.size} postů (v retenci)")
   end
 
@@ -262,12 +289,15 @@ def main
   end
 
   posts = seen.values.sort_by { |r| r["created_at"].to_s }.reverse
-  File.write("#{OUT_PATH}.tmp", JSON.generate({ "generated_at" => Time.now.utc.iso8601,
-                                                "retention_days" => RETENTION_DAYS, "count" => posts.size, "posts" => posts }))
-  File.rename("#{OUT_PATH}.tmp", OUT_PATH)
-  log("✅ Posty: #{posts.size} → #{OUT_PATH} (#{(File.size(OUT_PATH) / 1_048_576.0).round(2)} MB)")
-
+  # build_users čte plné záznamy (seen) — proto users.json sestavíme PŘED slim zápisem.
   users = build_users(seen, cat)
+
+  slim = posts.map { |p| slim_post(p) }
+  File.write("#{OUT_PATH}.tmp", JSON.generate({ "generated_at" => Time.now.utc.iso8601,
+                                                "retention_days" => RETENTION_DAYS, "count" => slim.size, "posts" => slim }))
+  File.rename("#{OUT_PATH}.tmp", OUT_PATH)
+  log("✅ Posty: #{slim.size} → #{OUT_PATH} (#{(File.size(OUT_PATH) / 1_048_576.0).round(2)} MB)")
+
   File.write("#{USERS_PATH}.tmp", JSON.generate({ "generated_at" => Time.now.utc.iso8601, "count" => users.size, "users" => users }))
   File.rename("#{USERS_PATH}.tmp", USERS_PATH)
   log("✅ Účty: #{users.size} (katalog #{users.count { |u| u['cat'] }}) → #{USERS_PATH} (#{(File.size(USERS_PATH) / 1024.0).round} KB)")

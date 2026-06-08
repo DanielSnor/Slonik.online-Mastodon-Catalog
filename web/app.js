@@ -469,7 +469,19 @@
   // Index drží jen content_html (menší). Tady dopočítáme to, co frontend potřebuje:
   // content_plain (zobrazení/zkrácení), content_folded (hledání), engagement.
   function hydrateSearchPosts() {
+    // Slim index: účtová pole nejsou v každém postu (redundance). Username/instance
+    // odvodíme z account_acct, jméno/avatar dotáhneme z users.json (join dle acct).
+    var usersByAcct = {};
+    searchUsers.forEach(function (u) { usersByAcct[u.a] = u; });
     searchPosts.forEach(function (p) {
+      var a = p.account_acct || '';
+      if (p.account_username == null) p.account_username = a.split('@')[0];
+      if (p.account_instance == null) { var at = a.indexOf('@'); p.account_instance = at >= 0 ? a.slice(at + 1) : ''; }
+      var u = usersByAcct[a];
+      if (u) {
+        if (p.account_display_name == null) p.account_display_name = u.n;
+        if (p.account_avatar == null) p.account_avatar = u.av;
+      }
       if (p.content_html) {                              // slim index → odvoď z HTML
         p.content_plain = htmlToText(p.content_html);
         p.content_folded = fold(p.content_plain + ' ' + (p.account_acct || '') + ' ' + (p.account_display_name || ''));
