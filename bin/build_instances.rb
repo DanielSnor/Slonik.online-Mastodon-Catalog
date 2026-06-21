@@ -69,15 +69,65 @@ def reg_status(v2)
   reg["approval_required"] ? "approval" : "open"
 end
 
+# NodeInfo — univerzální fediverse standard (funguje i bez Mastodon API: Misskey,
+# Friendica…). Vrací parsed nodeinfo 2.x, nebo nil.
+def nodeinfo(host)
+  _, disc, = API.get(host, "/.well-known/nodeinfo")
+  return nil unless disc.is_a?(Hash)
+
+  links = Array(disc["links"])
+  link = links.find { |l| l["rel"].to_s.end_with?("/2.1") } || links.find { |l| l["rel"].to_s.end_with?("/2.0") }
+  href = link && link["href"]
+  return nil unless href
+
+  u = (URI.parse(href) rescue nil)
+  return nil unless u&.host
+
+  path = u.path
+  path += "?#{u.query}" if u.query
+  _, ni, = API.get(u.host, path)
+  ni.is_a?(Hash) ? ni : nil
+rescue StandardError
+  nil
+end
+
+# NodeInfo → tvar jako Mastodon v2/v1 (jen pole, která build() čte).
+def nodeinfo_to_instance(ni)
+  meta  = ni["metadata"] || {}
+  usage = ni["usage"] || {}
+  users = usage["users"] || {}
+  v2 = {
+    "title" => meta["nodeName"],
+    "description" => meta["nodeDescription"].to_s,
+    "usage" => { "users" => { "active_month" => users["activeMonth"] } },
+    "registrations" => { "enabled" => ni["openRegistrations"] ? true : false },
+    "version" => ni.dig("software", "version"),
+  }
+  v1 = { "stats" => { "user_count" => users["total"], "status_count" => usage["localPosts"] } }
+  [v2, v1]
+end
+
 # Stáhne /api/v2 (+v1) instance. Když holá doména nevrací API, zkusí ještě
-# mastodon.<doména> (servery běžící na subdoméně). Vrací [api_host, v2, v1] / nil.
+# mastodon.<doména> (servery na subdoméně). Když Mastodon API nikde není (Misskey
+# apod.), spadne na NodeInfo. Vrací [api_host, v2, v1, software] / nil.
 def fetch_instance(host)
   candidates = [host]
   candidates << "mastodon.#{host}" unless host.start_with?("mastodon.")
   candidates.each do |h|
     _, v2, = API.get(h, "/api/v2/instance")
     _, v1, = API.get(h, "/api/v1/instance")
-    return [h, v2, v1] if v2.is_a?(Hash) || v1.is_a?(Hash)
+    if v2.is_a?(Hash) || v1.is_a?(Hash)
+      sw = nodeinfo(h)&.dig("software", "name") || "mastodon"
+      return [h, v2, v1, sw]
+    end
+  end
+  # Bez Mastodon API → NodeInfo (Misskey, Friendica, Hubzilla…).
+  candidates.each do |h|
+    ni = nodeinfo(h)
+    next unless ni
+
+    v2, v1 = nodeinfo_to_instance(ni)
+    return [h, v2, v1, ni.dig("software", "name")]
   end
   nil
 end
@@ -86,7 +136,7 @@ def build(host, cat)
   got = fetch_instance(host)
   return nil unless got
 
-  api_host, v2, v1 = got
+  api_host, v2, v1, software = got
   v2 ||= {}
   v1 ||= {}
   stats = v1["stats"] || {}
@@ -103,6 +153,7 @@ def build(host, cat)
     "registrations" => reg_status(v2),
     "languages" => (v2["languages"] || v1["languages"] || []),
     "version" => (v2["version"] || v1["version"]),
+    "software" => software,
     "catalog_count" => (cat[api_host] || cat[host] || 0),
   }
 end

@@ -25,6 +25,7 @@ mastodon.rozhlas.cz       # Český rozhlas (dříve chybně rozhlas.cz)
 boskovice.social          # 5 / 25
 kompost.cz                # 2 (z discovery)
 mastodon.cesko.digital    # Česko.Digital (apex cesko.digital jen redirect → subdoména)
+otakuzatoka.cz            # Misskey (přehled přes NodeInfo; Mastodon API nemá)
 
 # --- slovenské instance ---
 mastodon.sk               # ryze SK, directory zapnutý
