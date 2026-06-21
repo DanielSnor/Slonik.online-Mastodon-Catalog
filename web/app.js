@@ -71,6 +71,7 @@
       instance_sec_czsk: 'České a slovenské instance',
       instance_sec_other: 'Další instance s českými/slovenskými účty',
       instance_sec_small: 'Malé / osobní instance',
+      instance_sec_nonmast: 'České a slovenské non-Mastodon instance',
       instance_search_ph: 'Název nebo doména…',
       isort_users: 'Nejvíc uživatelů', isort_active: 'Nejaktivnější',
       isort_catalog: 'Nejvíc účtů z katalogu', isort_posts: 'Nejvíc příspěvků',
@@ -163,6 +164,7 @@
       instance_sec_czsk: 'Czech & Slovak instances',
       instance_sec_other: 'Other instances with Czech/Slovak accounts',
       instance_sec_small: 'Small / personal instances',
+      instance_sec_nonmast: 'Czech & Slovak non-Mastodon instances',
       instance_search_ph: 'Name or domain…',
       isort_users: 'Most users', isort_active: 'Most active',
       isort_catalog: 'Most catalog accounts', isort_posts: 'Most posts',
@@ -321,6 +323,8 @@
     if (['ucty', 'posty', 'instance', 'search', 'about', 'odkazy'].indexOf(next) === -1) return;
     if (next === view) return;
     view = next;
+    var _vk = { ucty: 'view_accounts', posty: 'view_posts', instance: 'view_instance', search: 'view_search', about: 'view_about', odkazy: 'view_links' }[next];
+    document.title = (_vk ? t(_vk) + ' — ' : '') + t('title_doc');
     applyView();
     writeHash();
   }
@@ -831,6 +835,9 @@
   function instRatio(i) { return (i.users > 0) ? (i.active_month || 0) / i.users : 0; }
   // Objem = celkový počet příspěvků na instanci (kvantitativní rozsah obsahu).
   function instVolume(i) { return i.statuses || 0; }
+  // Non-Mastodon = jiný fediverse software (Pixelfed, Misskey, snac, PeerTube…).
+  // Chybějící `software` (starší data) bereme jako Mastodon.
+  function isNonMastodon(i) { return !!(i.software && String(i.software).toLowerCase() !== 'mastodon'); }
 
   // Číselník zaměření instancí = kategorie joinmastodon.org (kód → CZ/EN popisek).
   var INSTANCE_CAT_LABELS = {
@@ -841,7 +848,8 @@
     journalism: { cs: 'Média', en: 'Journalism' }, lgbt: { cs: 'LGBT+', en: 'LGBT+' },
     music: { cs: 'Hudba', en: 'Music' }, regional: { cs: 'Region', en: 'Regional' },
     tech: { cs: 'Technologie', en: 'Tech' },
-    __small: { cs: 'Malá / Osobní', en: 'Small / personal' }   // pseudo-kategorie dle velikosti
+    __small: { cs: 'Malá / Osobní', en: 'Small / personal' },   // pseudo-kategorie dle velikosti
+    __nonmastodon: { cs: 'Non-Mastodon', en: 'Non-Mastodon' }   // pseudo-kategorie dle software
   };
   function catLabel(slug) {
     var l = INSTANCE_CAT_LABELS[slug];
@@ -856,6 +864,7 @@
         var hit = false;
         // „Malá / Osobní" = syntetická volba podle velikosti (ne z dat).
         if (instanceCats.has('__small') && (i.users || 0) < INSTANCE_SMALL_USERS) hit = true;
+        if (!hit && instanceCats.has('__nonmastodon') && isNonMastodon(i)) hit = true;
         if (!hit) hit = (i.categories || []).some(function (c) { return instanceCats.has(c); });
         if (!hit) return false;
       }
@@ -878,6 +887,8 @@
     });
     var smallCount = instanceList.filter(function (i) { return (i.users || 0) < INSTANCE_SMALL_USERS; }).length;
     if (smallCount) { counts.__small = smallCount; slugs.push('__small'); }   // vždy na konci
+    var nonmastCount = instanceList.filter(isNonMastodon).length;
+    if (nonmastCount) { counts.__nonmastodon = nonmastCount; slugs.push('__nonmastodon'); }
 
     if (instanceRegionGroupEl) instanceRegionGroupEl.hidden = (slugs.length === 0);
     instanceCatChipsEl.innerHTML = '';
@@ -910,7 +921,7 @@
     if (instanceTab === 'ratio' || instanceTab === 'volume') {
       // Žebříček podle aktivity — jen HLAVNÍ instance (CZ/SK, nad práh „malé"), top N.
       var metric = instanceTab === 'ratio' ? instRatio : instVolume;
-      list = list.filter(function (i) { return i.czsk && (i.users || 0) >= INSTANCE_SMALL_USERS; })
+      list = list.filter(function (i) { return i.czsk && !isNonMastodon(i) && (i.users || 0) >= INSTANCE_SMALL_USERS; })
                  .slice().sort(function (a, b) { return metric(b) - metric(a); })
                  .slice(0, INSTANCE_RANK_TOP);
       metaNote = ' · ' + t(instanceTab === 'ratio' ? 'irank_ratio_note' : 'irank_volume_note');
@@ -928,13 +939,17 @@
       instanceResultsEl.appendChild(z);
       return;
     }
-    // 3 sekce: hlavní CZ/SK → malé/osobní → další (zahraniční s CZ/SK účty).
-    // Dělení malých je čistě dle velikosti, takže komunitní/regionální instance
-    // (boskovice, kompost) zůstanou v hlavní sekci.
-    var small = list.filter(function (i) { return (i.users || 0) < INSTANCE_SMALL_USERS; });
-    var big = list.filter(function (i) { return (i.users || 0) >= INSTANCE_SMALL_USERS; });
+    // Sekce: hlavní CZ/SK → malé/osobní → CZ/SK non-Mastodon → další (zahraniční).
+    // CZ/SK non-Mastodon (Pixelfed/Misskey/snac/PeerTube…) vytáhneme zvlášť — mají
+    // jiný model i často neúplné metriky (chybí MAU). Zbytek dělíme dle velikosti,
+    // takže komunitní/regionální instance (boskovice, kompost) zůstanou v hlavní sekci.
+    var nonmast = list.filter(function (i) { return i.czsk && isNonMastodon(i); });
+    var rest = list.filter(function (i) { return !(i.czsk && isNonMastodon(i)); });
+    var small = rest.filter(function (i) { return (i.users || 0) < INSTANCE_SMALL_USERS; });
+    var big = rest.filter(function (i) { return (i.users || 0) >= INSTANCE_SMALL_USERS; });
     appendInstanceSection(t('instance_sec_czsk'), big.filter(function (i) { return i.czsk; }));
     appendInstanceSection(t('instance_sec_small'), small);
+    appendInstanceSection(t('instance_sec_nonmast'), nonmast);
     appendInstanceSection(t('instance_sec_other'), big.filter(function (i) { return !i.czsk; }));
   }
 
@@ -1376,11 +1391,19 @@
       }
     }
 
-    // --- Příloha (jen badge, ne náhled) ---
-    if (p.has_media) {
-      var media = document.createElement('span');
+    // --- Příloha — tlačítko otvírající embed modal ---
+    // Vynechat /ap/users/... URI — embed na tom tvaru nefunguje
+    if (p.has_media && p.url && p.url.indexOf('/ap/users/') === -1) {
+      var media = document.createElement('button');
+      media.type = 'button';
       media.className = 'post-media-badge';
       media.textContent = '📷 ' + t('post_media');
+      (function (url) {
+        media.addEventListener('click', function (e) {
+          e.stopPropagation();
+          openEmbedModal(url);
+        });
+      }(p.url));
       card.appendChild(media);
     }
 
@@ -1462,7 +1485,7 @@
   var catalogById = {};       // CELÝ katalog (i neaktivní) — pro vyhledávání
   var filters = { family: new Set(), type: new Set(), language: new Set(), tag: new Set() };
   var searchQuery = '';
-  var sortKey = 'name';
+  var sortKey = 'followers';
   var slice = { kind: 'all' };   // all | platform:<p> | top:<metric>:<n> | recent
 
   // ---------- Stav pohledu na posty ----------
@@ -1496,7 +1519,7 @@
   var cardsEl, emptyEl, loadingEl, searchEl, resetEl, emptyResetEl,
       visibleCountEl, totalCountEl, sortEl, sliceNoteEl, tabsEl,
       tagInputEl, tagSuggestEl, tagSelectedEl, tagChipsEl,
-      sidebarEl, sidebarToggleEl, modalEl, hoverEl, institutionBtnEl,
+      sidebarEl, sidebarToggleEl, modalEl, embedModalEl, hoverEl, institutionBtnEl,
       accountsViewEl, postsViewEl, aboutViewEl, postsGridEl, postsLoadingEl, postsEmptyEl,
       postsUnavailableEl, postsSortEl, postsSortWrapEl, postsTabsEl, postsMetaEl,
       postHashtagsGroupEl, postHashtagChipsEl, postHashtagSelectedEl, aboutNavEl,
@@ -1539,6 +1562,8 @@
     sidebarEl      = document.getElementById('sidebar');
     sidebarToggleEl = document.getElementById('sidebar-toggle');
     modalEl        = document.getElementById('detail-modal');
+    embedModalEl   = document.getElementById('embed-modal');
+    bindEmbedModalClose();
     institutionBtnEl = document.querySelector('.filter-group[data-filter="type"] button[data-value="institution"]');
     hoverEl        = buildHoverEl();
 
@@ -2284,6 +2309,65 @@
     });
   }
 
+  function openEmbedModal(postUrl) {
+    var embedUrl = postUrl.replace(/\/?$/, '') + '/embed';
+    var statusId = postUrl.replace(/\/$/, '').split('/').pop();
+    embedModalEl.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'embed-modal-inner';
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'modal-close';
+    close.setAttribute('aria-label', t('modal_close'));
+    close.textContent = '×';
+    close.addEventListener('click', closeEmbedModal);
+    wrap.appendChild(close);
+
+    var frame = document.createElement('iframe');
+    frame.src = embedUrl;
+    frame.className = 'embed-frame';
+    frame.setAttribute('allowfullscreen', '');
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+    frame.addEventListener('load', function () {
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'setHeight', id: statusId }, '*');
+      }
+    });
+    wrap.appendChild(frame);
+
+    embedModalEl.appendChild(wrap);
+    if (typeof embedModalEl.showModal === 'function') {
+      embedModalEl.showModal();
+    } else {
+      embedModalEl.setAttribute('open', '');
+      embedModalEl.classList.add('modal-fallback-open');
+    }
+  }
+
+  function closeEmbedModal() {
+    if (typeof embedModalEl.close === 'function' && embedModalEl.open) embedModalEl.close();
+    embedModalEl.removeAttribute('open');
+    embedModalEl.classList.remove('modal-fallback-open');
+    embedModalEl.innerHTML = '';
+  }
+
+  function bindEmbedModalClose() {
+    embedModalEl.addEventListener('click', function (e) {
+      if (e.target === embedModalEl) closeEmbedModal();
+    });
+    embedModalEl.addEventListener('cancel', function () { closeEmbedModal(); });
+    window.addEventListener('message', function (e) {
+      if (!embedModalEl || !embedModalEl.open) return;
+      if (!e.data || e.data.type !== 'setHeight') return;
+      var h = parseInt(e.data.height, 10);
+      if (h > 0) {
+        var frame = embedModalEl.querySelector('.embed-frame');
+        if (frame) frame.style.height = h + 'px';
+      }
+    });
+  }
+
   function buildModalContent(rec) {
     var wrap = document.createElement('div');
     wrap.className = 'modal-inner';
@@ -2532,7 +2616,7 @@
     if (!hash) return;
     filters.family.clear(); filters.type.clear();
     filters.language.clear(); filters.tag.clear();
-    searchQuery = ''; sortKey = 'name'; slice = { kind: 'all' };
+    searchQuery = ''; sortKey = 'followers'; slice = { kind: 'all' };
     view = 'ucty'; postsSort = 'engagement'; postsTab = 'all'; aboutSection = 'about'; postHashtags.clear();
     instanceTab = 'all'; searchTab = 'all'; instanceCats.clear(); pendingSearchQ = '';
     linkTypes.clear(); linkLangs.clear();
@@ -2633,7 +2717,7 @@
     filters.family.clear(); filters.type.clear();
     filters.language.clear(); filters.tag.clear();
     searchQuery = ''; searchEl.value = '';
-    sortKey = 'name'; sortEl.value = 'name';
+    sortKey = 'followers'; sortEl.value = 'followers';
     slice = { kind: 'all' };
     tagInputEl.value = '';
     document.querySelectorAll('.filter-group button.active')
