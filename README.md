@@ -234,6 +234,7 @@ ANTHROPIC_API_KEY=... ruby bin/update_catalog.rb     # plná aktualizace + uploa
 |---|---|---|
 | Diff | nové účty (nejsou v katalogu dle `id`) vs. stávající | zdarma |
 | Refresh stávajících | followers/avatar/bio přes Mastodon lookup; rodina/tagy/popis zůstávají | **zdarma** (bez AI) |
+| Kadence refreshe | aktivní každý běh, mlčící ~měsíčně, dlouho mlčící/bez postů ~čtvrtletně | **zdarma** |
 | Migrace účtu | `moved` → záznam se přesměruje na novou adresu (metadata zůstanou), dedup dle `id` | **zdarma** |
 | Ověření záznamu | úspěch → `last_verified_at`; selhání → `verify_failures` + `unverified_since` | **zdarma** |
 | Týdenní přírůstky | `followers_delta`/`activity_delta` = rozdíl proti `metrics_snapshot.json` (Skokani v Účtech) | **zdarma** |
@@ -268,6 +269,18 @@ pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede *
 účty v koši `lifestyle` (přebij přes `REFAMILY_FROM=a,b`) a přeurčí `family` +
 `categories`. Na rozdíl od `--retype` potřebuje i posty (rodina se řídí převažujícím
 tématem, ne biem), takže stojí jako nový účet (~$0.0079/účet).
+
+**Kadence refreshe** (`REFRESH_DORMANT_DAYS` 28, `REFRESH_SILENT_DAYS` 91,
+`DORMANT_DAYS` 365): tři čtvrtiny katalogu tvoří účty, které nikdy nic nenapsaly
+nebo mlčí přes rok — obnovovat jim followers každý týden nic nepřinese a stojí to
+většinu času celého běhu. Aktivní účty (≤ `ACTIVE_DAYS`) se obnovují každý běh,
+mlčící 90–365 dní ~měsíčně, dlouho mlčící a účty bez jediného postu ~čtvrtletně.
+Rozhoduje `last_verified_at`; záznam bez něj se obnoví vždy. Vynucení: `--refresh-all`
+(nebo `REFRESH_ALL=1`).
+
+*Cena za to:* účet, který se po roce mlčení rozmluví, se v katalogu projeví až při
+svém dalším refreshi (do ~3 měsíců). Jeho posty se ale ve **Vyhledávání** objeví
+hned, pokud je jeho instance skrapovaná.
 
 **Stáří dat** (`last_verified_at` / `unverified_since` / `verify_failures`):
 selhaný lookup neznamená „účet se nezměnil", ale „nevíme". Bez značky by zaniklý

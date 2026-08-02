@@ -17,6 +17,7 @@
 #   ruby update_catalog.rb --dry-run                   # jen diff + odhad ceny
 #   ruby update_catalog.rb --no-categorize             # nové jen vypíše (bez AI)
 #   ruby update_catalog.rb --no-refresh                # bez refreshe stávajících
+#   ruby update_catalog.rb --refresh-all               # obnov i mlčící (mimo kadenci)
 #   ruby update_catalog.rb --no-upload                 # nenahrávat na Surfer
 #   ruby update_catalog.rb --no-czsk-filter            # kategorizovat i ne-CZ/SK
 #   ruby update_catalog.rb --recheck-skipped           # ignoruj cache přeskočených
@@ -69,6 +70,15 @@ STATUSES_LIMIT  = (ENV["STATUSES_LIMIT"] || "20").to_i
 LIMIT_NEW       = (ENV["LIMIT_NEW"] || "0").to_i
 AI_DELAY        = (ENV["AI_DELAY"] || "0.5").to_f
 ACTIVE_DAYS     = (ENV["ACTIVE_DAYS"] || "90").to_i  # aktivní = poslední příspěvek ≤ N dní
+# Kadence refreshe podle aktivity účtu. Tři čtvrtiny katalogu tvoří účty, které
+# nikdy nic nenapsaly nebo mlčí přes rok — obnovovat jim followers každý týden
+# je zbytečné (za týden se nezmění) a stojí to většinu času celého běhu.
+# Interval 0 = každý běh. Rozhoduje `last_verified_at` z minulého úspěšného
+# refreshe; záznam bez něj se obnoví vždy.
+DORMANT_DAYS     = (ENV["DORMANT_DAYS"] || "365").to_i        # hranice „mlčí dlouho"
+REFRESH_DORMANT  = (ENV["REFRESH_DORMANT_DAYS"] || "28").to_i # 90–365 dní → ~měsíčně
+REFRESH_SILENT   = (ENV["REFRESH_SILENT_DAYS"] || "91").to_i  # >365 dní / nikdy → ~čtvrtletně
+REFRESH_ALL      = ARGV.include?("--refresh-all") || ENV["REFRESH_ALL"] == "1"
 FLUSH_EVERY     = (ENV["FLUSH_EVERY"] || "25").to_i  # lokální checkpoint po N účtech
 UPLOAD_EVERY    = (ENV["UPLOAD_EVERY"] || "250").to_i # průběžný upload na Surfer po N účtech (0 = jen na konci)
 
@@ -263,14 +273,51 @@ def refresh_record(rec, snapshot = nil)
   rec
 end
 
+# Počet dní od posledního příspěvku, nebo nil (účet nikdy nic nepublikoval —
+# chybějící last_status_at je u Mastodonu právě tohle, ne chyba sběru).
+def days_since_post(rec)
+  d = rec["last_status_at"].to_s
+  return nil if d.empty?
+
+  (Date.today - Date.parse(d)).to_i
+rescue ArgumentError
+  nil
+end
+
 # Aktivní účet = poslední příspěvek do ACTIVE_DAYS dní (shodné s frontendem).
 def active?(rec)
-  d = rec["last_status_at"].to_s
-  return false if d.empty?
+  d = days_since_post(rec)
+  !d.nil? && d <= ACTIVE_DAYS
+end
 
-  (Date.today - Date.parse(d)).to_i <= ACTIVE_DAYS
+# Jak často účet obnovovat: :active každý běh, :dormant ~měsíčně, :silent ~čtvrtletně.
+def refresh_tier(rec)
+  d = days_since_post(rec)
+  return :silent if d.nil?          # nikdy nepublikoval
+  return :active if d <= ACTIVE_DAYS
+  return :dormant if d <= DORMANT_DAYS
+
+  :silent
+end
+
+# Má se účet v tomhle běhu obnovovat? Účet bez `last_verified_at` (nový nebo
+# z doby před zavedením značky) se obnoví vždy.
+def due_for_refresh?(rec)
+  return true if REFRESH_ALL
+
+  interval = case refresh_tier(rec)
+             when :active then 0
+             when :dormant then REFRESH_DORMANT
+             else REFRESH_SILENT
+             end
+  return true if interval.zero?
+
+  seen = rec["last_verified_at"].to_s
+  return true if seen.empty?
+
+  (Date.today - Date.parse(seen)).to_i >= interval
 rescue ArgumentError
-  false
+  true
 end
 
 # Lehká klasifikace TYPU z uloženého bia + jména (bez stahování postů → levné).
@@ -484,8 +531,17 @@ def main
     refreshable = catalog.count { |r| r["id"].to_s.include?("@") }
     done = 0
     deltas = 0
+    postponed = Hash.new(0)
     refreshed = catalog.map do |rec|
       next rec unless rec["id"].to_s.include?("@")
+
+      # Odložené účty (mlčící / nikdy nepublikující) tenhle běh přeskočíme —
+      # viz DORMANT/SILENT výše. posts_week si s nepravidelnou kadencí poradí,
+      # přírůstek se normalizuje na 7 dní podle `at` ve snapshotu.
+      unless due_for_refresh?(rec)
+        postponed[refresh_tier(rec)] += 1
+        next rec
+      end
 
       done += 1
       r = refresh_record(rec, snapshot)
@@ -494,6 +550,10 @@ def main
       r
     end
     log("  Obnoveno #{done}/#{refreshable} účtů (přírůstky u #{deltas})")
+    if postponed.any?
+      log("  ⏭  Odloženo dle kadence: mlčící #{postponed[:dormant]} (á #{REFRESH_DORMANT} dní), " \
+          "dlouho mlčící/bez postů #{postponed[:silent]} (á #{REFRESH_SILENT} dní) — vynutit: --refresh-all")
+    end
     if STATS[:unverified].positive?
       stale = refreshed.select { |r| r["unverified_since"] }
       oldest = stale.map { |r| r["unverified_since"] }.min
