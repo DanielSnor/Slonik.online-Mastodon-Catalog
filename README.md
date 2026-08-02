@@ -284,8 +284,8 @@ kategorizaci. Přeznačení stávajících: `--retype` projede **aktivní** úč
 a přeurčí jen `type` z uloženého bia (bio-only → levné, ~$0.004/účet), s checkpointem
 a throttle uploadem.
 
-**Rodina** (`family`): `news` / `sport` / `culture` / `science_tech` / `humor` /
-`government` / `local` / `lifestyle` — shodné s filtrem na webu. Model klasifikuje
+**Rodina** (`family`): `news` / `sport` / `culture` / `science_tech` / `nature` /
+`humor` / `government` / `local` / `lifestyle` — shodné s filtrem na webu. Model klasifikuje
 do PoC rodin, `AI::FAMILY_MAP` je překlápí na katalogové; **chybějící klíč v mapě
 znamená tichý pád do `lifestyle`**, proto `lib/ai.rb` při načtení ověří, že mapování
 pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede **aktivní**

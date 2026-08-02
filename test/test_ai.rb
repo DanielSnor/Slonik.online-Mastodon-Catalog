@@ -30,6 +30,17 @@ class TestAI < Minitest::Test
                  "regionální účty musí jít odlišit od nezařaditelných"
   end
 
+  def test_nature_has_its_own_family_and_is_not_science
+    assert_equal "nature", @ai.map_family("nature")
+    refute_equal @ai.map_family("nature"), @ai.map_family("tech"),
+                 "včelař ani zahrádkář nepatří pod „věda a technika“"
+  end
+
+  def test_every_family_maps_to_a_catalog_family
+    assert_empty AI::FAMILY_MAP.values.uniq - AI::VALID_CATALOG_FAMILIES
+    assert_empty AI::FAMILIES - AI::FAMILY_MAP.keys
+  end
+
   def test_unknown_family_falls_back
     assert_equal "lifestyle", @ai.map_family("neco-co-model-vymyslel")
     assert_equal "lifestyle", @ai.map_family(nil)

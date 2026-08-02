@@ -31,10 +31,10 @@ class AI
   # "lifestyle" (viz map_family), takže by se tiše slil s košem „other".
   FAMILY_MAP = {
     "news" => "news", "politics" => "government", "sport" => "sport",
-    "tech" => "science_tech", "culture" => "culture", "nature" => "science_tech",
+    "tech" => "science_tech", "culture" => "culture", "nature" => "nature",
     "fun" => "humor", "local" => "local", "other" => "lifestyle",
   }.freeze
-  VALID_CATALOG_FAMILIES = %w[news sport culture science_tech humor government local lifestyle].freeze
+  VALID_CATALOG_FAMILIES = %w[news sport culture science_tech nature humor government local lifestyle].freeze
 
   # Pojistka proti tichému slití rodiny do „lifestyle": kdyby někdo přidal rodinu
   # do FAMILIES (nebo do SYSTEM_PROMPTu) a zapomněl na mapování, spadne to hned
