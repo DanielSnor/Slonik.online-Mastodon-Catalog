@@ -747,11 +747,13 @@
   }
 
   function instanceAvatar(i) {
-    var logo = safeUrl(i.thumbnail);
+    // Nejdřív naše zmenšená kopie (cache_images.rb), pak vzdálený originál.
+    var logo = localImage(i.thumbnail_local) || safeUrl(i.thumbnail);
     if (logo) {
       var img = document.createElement('img');
       img.className = 'inst-logo'; img.src = logo; img.alt = ''; img.loading = 'lazy';
-      img.referrerPolicy = 'no-referrer';   // logo se tahá z cizí instance, viz buildAvatar
+      // Platí jen pro vzdálený fallback; u lokální kopie nemá co odesílat.
+      img.referrerPolicy = 'no-referrer';
       img.onerror = function () {
         var fb = instanceFallback(i); img.replaceWith(fb);
       };
@@ -2627,16 +2629,17 @@
     return /^https?:\/\//i.test(String(u == null ? '' : u)) ? String(u) : '';
   }
 
-  // Lokální (zmenšená) kopie avataru, kterou publikuje cache_avatars.rb. Tvar je
-  // vždycky `avatars/<hex>.webp` — schválně úzký vzor, ať se sem nedá propašovat
-  // relativní cesta odjinud. Když kopie není, volající sáhne po vzdálené adrese.
-  function localAvatar(u) {
-    return /^avatars\/[a-f0-9]{8,}\.webp$/.test(String(u == null ? '' : u)) ? String(u) : '';
+  // Lokální (zmenšená) kopie obrázku, kterou publikuje cache_images.rb. Tvar je
+  // vždycky `avatars/<hex>.webp` nebo `logos/<hex>.webp` — schválně úzký vzor, ať
+  // se sem nedá propašovat relativní cesta odjinud. Když kopie není, volající
+  // sáhne po vzdálené adrese.
+  function localImage(u) {
+    return /^(avatars|logos)\/[a-f0-9]{8,}\.webp$/.test(String(u == null ? '' : u)) ? String(u) : '';
   }
 
   // Adresa avataru k zobrazení: nejdřív naše kopie, pak vzdálený originál.
   function avatarUrlFor(rec) {
-    return rec ? (localAvatar(rec.avatar_local) || safeUrl(rec.avatar)) : '';
+    return rec ? (localImage(rec.avatar_local) || safeUrl(rec.avatar)) : '';
   }
 
   // Karta postu nese jen adresu avataru, jak vypadala při sběru. Přednost proto
@@ -2647,8 +2650,8 @@
     var acct = p.account_acct || (p.account_username + '@' + p.account_instance);
     var c = catalogById[acct];
     if (c) return c;
-    return localAvatar(p.account_avatar) ? { avatar_local: p.account_avatar }
-                                         : { avatar: p.account_avatar };
+    return localImage(p.account_avatar) ? { avatar_local: p.account_avatar }
+                                        : { avatar: p.account_avatar };
   }
 
   // Nastaví href jen u použitelné adresy; jinak href vůbec nevznikne (prvek

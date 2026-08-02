@@ -22,7 +22,7 @@ bin/                    spustitelné skripty (entry points)
   collect_posts.rb        denní sběr postů → data/posts_YYYY_Www.jsonl
   consolidate_posts.rb    týdenní konsolidace → web/posts.json → upload na Surfer
   build_search.rb         přírůstkový index pro vyhledávání → web/search.json + users.json
-  cache_avatars.rb        zmenšené kopie avatarů → web/avatars/ (soukromí + přenos)
+  cache_images.rb         zmenšené kopie avatarů a log → web/avatars/, web/logos/
   build_instances.rb      přehled instancí (v2/v1 /instance) → web/instances.json
   classify_instances.rb   zaměření instancí (joinmastodon + AI) → data/instance_topics.json
   deploy_web.rb           nahraje web bundle (web/) na Surfer (Files API)
@@ -58,7 +58,7 @@ data/                   data (vstupy/výstupy/stav; generované jsou v .gitignor
 web/                    nasaditelný web (index.html, app.js, app.css, header.jpg,
                         links.js = kurátorovaný rozcestník (tab Odkazy),
                         data.json = PUBLIKOVANÝ katalog (jen zobrazovaná pole),
-                        avatars/ = zmenšené kopie avatarů (112px WebP),
+                        avatars/ + logos/ = zmenšené kopie obrázků (WebP),
                         posts.json, DEPLOY.md; search.json + users.json = vyhledávání,
                         instances.json = tab Instance)
 test/                   testy čistých funkcí (minitest ze stdlib, žádné gemy)
@@ -87,7 +87,7 @@ Tenké wrappery — samy přejdou do kořene projektu a `update.sh` načte
 | `./consolidate.sh` | týdenní konsolidace postů |
 | `./build-search.sh [--rebuild]` | index pro vyhledávání → `search.json` + `users.json` (přírůstkově; `--rebuild` = plný) |
 | `./build-search.sh --bg [flagy]` | totéž na pozadí → `logs/search.log` (+ `logs/search.pid`) |
-| `./cache-avatars.sh [--dry-run\|--rebuild]` | zmenšené kopie avatarů → `web/avatars/` |
+| `./cache-images.sh [--dry-run\|--rebuild]` | zmenšené kopie avatarů a log instancí |
 | `./build-instances.sh` | přehled instancí → `instances.json` |
 | `./classify-instances.sh [--rebuild\|--dry-run]` | zaměření instancí (joinmastodon + AI) → cache |
 | `./refresh-instances.sh` | build → classify → build v jednom (kategorie i pro nové instance) |
@@ -450,37 +450,54 @@ pár minut po publikaci nesl svoje nuly celou retenci — a Skokani ve Vyhledáv
 se z těch čísel počítají. Nestojí to requesty navíc za jednotlivé posty: čerstvá
 čísla přijdou v týchž stránkách timeline, jen se u nich nezastavíme dřív.
 
-## `cache_avatars.rb` — lokální kopie avatarů
+## `cache_images.rb` — lokální kopie obrázků
 
 ```bash
-ruby bin/cache_avatars.rb              # doplní chybějící, prořeže, nahraje
-ruby bin/cache_avatars.rb --dry-run    # jen spočítá
-ruby bin/cache_avatars.rb --rebuild    # od nuly
+ruby bin/cache_images.rb               # doplní chybějící, prořeže, nahraje
+ruby bin/cache_images.rb --dry-run     # jen spočítá
+ruby bin/cache_images.rb --only logos  # jen jeden druh (avatars|logos)
+ruby bin/cache_images.rb --rebuild     # od nuly
 ```
-ENV: `AVATAR_SIZE` (112), `AVATAR_QUALITY` (80), `AVATAR_DIR` (web/avatars), `LIMIT`.
+ENV: `AVATAR_SIZE` (112), `LOGO_SIZE` (120), `IMAGE_QUALITY` (80), `LIMIT`.
 
-Avatary se dřív načítaly přímo z domovských instancí. To znamenalo dvě věci:
-**~65 cizích serverů vidělo IP každého návštěvníka** a prohlížeč stahoval obrázky
-400×400 px (medián 25 kB, p90 207 kB), aby je vykreslil na 56 px — celý seznam
-Účtů dělal skoro **40 MB**. Zmenšená kopie na vlastní doméně řeší obojí:
-**~3 kB na avatar**, jedno spojení, nikdo třetí.
+Avatary i loga instancí se dřív načítaly přímo z domovských serverů. To znamenalo
+dvě věci: **~65 cizích serverů vidělo IP každého návštěvníka** a prohlížeč stahoval
+mnohonásobně větší obrázky, než kolik vykreslí:
+
+| | zdroj | zobrazeno | za celou záložku |
+|---|---|---|---|
+| Avatary | 400×400, medián 25 kB, p90 207 kB | 56 px | **~40 MB** (589 účtů) |
+| Loga | bannery 1200×620, průměr 366 kB | 60 px | **13,5 MB** (38 instancí) |
+
+Zmenšená kopie na vlastní doméně řeší obojí: **jednotky kB na obrázek**, jedno
+spojení, nikdo třetí.
 
 - Jméno souboru je hash **zdrojové URL**. Mastodon má v URL obsahový hash obrázku,
-  takže nezměněná URL = nezměněný obrázek → další běhy nestahují nic. Změna avataru
+  takže nezměněná URL = nezměněný obrázek → další běhy nestahují nic. Změna obrázku
   dá novou URL → nový soubor → starý se prořeže. Žádné cache-busting hlavičky.
 - **Prořezávání je zároveň cesta, kterou z webu zmizí avatar účtu vyřazeného
   blocklistem** — účet z katalogu vypadl, takže na jeho soubor nikdo neukazuje.
-- Účet bez použitelné kopie (smazaný avatar, nedostupná instance) zůstane bez
-  `avatar_local` a frontend u něj sáhne po vzdálené URL jako dřív.
+- Záznam bez použitelné kopie (smazaný obrázek, nedostupná instance) zůstane bez
+  `avatar_local`/`thumbnail_local` a frontend u něj sáhne po vzdálené URL jako dřív.
+- Loga se ořezávají **doprostřed**, ne přes `--smartcrop attention`. Porovnáno na
+  osmi reálných logách: „attention" utne nápis u witter.cz i f.cz a mastodonovským
+  logům ukousne slonovi hlavu. Střed navíc odpovídá tomu, co dělá `object-fit: cover`
+  dnes, takže se vzhled webu nemění.
 - Animovaný GIF se uloží jako statický první snímek — Mastodon sám avatary ve
   výchozím nastavení nepřehrává.
 
+⚠️ **Musí běžet AŽ ZA `update_catalog` i `refresh-instances`** (viz `weekly.sh`):
+čte `data.json` i `instances.json` a zapisuje do nich cesty ke kopiím.
+`build_instances.rb` staví `instances.json` pokaždé od nuly, takže `thumbnail_local`
+v něm nepřežije — tenhle skript ho doplní znovu a je tím samoopravný.
+
 **Závislost je měkká:** potřebuje `vipsthumbnail` (nebo `magick`/`convert`). Když
 žádný není, skript skončí bez chyby a web dál používá vzdálené URL. Produkční
-kontejner má vips 8.15.3 i ImageMagick 6.9.12.
+kontejner má vips 8.15.3 i ImageMagick 6.9.12; `Gemfile` nepřibyl.
 
-Měřeno na 60 účtech v produkčním kontejneru: 3,8 MB → 0,18 MB (**95 % úspora**),
-17 s. Druhý běh nestahuje nic (1 s). Pro celý katalog čekej ~15 min a ~10 MB.
+Měřeno v produkčním kontejneru: **60 avatarů 3,8 → 0,18 MB (95 %) za 17 s**,
+**37 log 13,7 → 0,11 MB (99 %) za 13 s**. Druhý běh nestahuje nic. Pro celý katalog
+čekej ~15 min a ~10 MB.
 
 ## `build_instances.rb` — přehled instancí
 

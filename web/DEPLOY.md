@@ -17,6 +17,7 @@ sekce „Nasazení na server". Tenhle soubor popisuje jen poslední krok.
 | Žebříčky | `posts.json`, `weekly.json` | `consolidate_posts.rb` sám |
 | Vyhledávání | `search.json`, `users.json` | `build_search.rb` sám |
 | Instance | `instances.json` | `build_instances.rb` sám |
+| Obrázky | `avatars/`, `logos/` | `cache_images.rb` sám (jen nové + mazání starých) |
 
 Datové soubory tedy ručně nahrávat netřeba — dávkové skripty je publikují samy po
 každém běhu. `./deploy-web.sh --assets` použiješ po změně frontendu,
@@ -49,15 +50,16 @@ Stejné credentials jako `SURFER_URL`/`SURFER_TOKEN` v `config.env`.
 - [ ] Filtry oblastí obsahují **Region**, ne „Byznys"
 - [ ] Vyhledávání najde výsledky (stahuje `search.json`, řádově MB)
 - [ ] Posty ukazují poslední uzavřený týden
+- [ ] Loga instancí i avatary se načítají z `slonik.online`, ne z cizích domén
 - [ ] Konzole prohlížeče je bez chyb — hlavně bez porušení CSP
 
-## Pozn. k avatarům
+## Pozn. k obrázkům
 
-`data.json` používá **přímé URL** na avatary jednotlivých instancí. Výhoda: žádné
-soubory k nahrání. Nevýhoda: když instance avatar smaže nebo přesune, frontend
-spadne na `avatar-fallback` (iniciála na barevném pozadí) — to je očekávané.
-Obrázky se načítají s `referrerPolicy="no-referrer"`, takže cizí servery nevidí,
-kterou stránku Sloníka si návštěvník prohlíží.
+Avatary i loga instancí se publikují jako **zmenšené kopie** ve `web/avatars/`
+a `web/logos/` — nahrává je `cache_images.rb`, `deploy-web.sh` se jich netýká.
+Jméno souboru je hash zdrojové URL, takže se přenášejí jen nově přibylé a smazané.
+Když kopie chybí, frontend zkusí původní vzdálenou adresu (s
+`referrerPolicy="no-referrer"`) a jinak vykreslí iniciálu na barevném pozadí.
 
 ## Lokální náhled (bez nasazení)
 
