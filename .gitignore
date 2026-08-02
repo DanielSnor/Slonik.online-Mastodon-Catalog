@@ -7,6 +7,10 @@ scripts/deploy.env
 # Provozní / generované soubory — všechny JSON ve web/ a data/ se generují
 # pipeline (katalog, žebříčky, indexy, stavové soubory, kandidáti…).
 web/*.json
+# Zmenšené kopie avatarů a log (cache_images.rb) — generované, na serveru
+# vznikají samy a s git deployem by se s pullem praly.
+web/avatars/
+web/logos/
 data/*.json
 data/posts_*.jsonl
 data/archive/
