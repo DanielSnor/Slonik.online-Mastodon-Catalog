@@ -107,6 +107,22 @@ def nodeinfo_to_instance(ni)
   [v2, v1]
 end
 
+# Ikona instance pro ne-Mastodon (NodeInfo thumbnail nemá). PeerTube: /api/v1/config
+# → instance.avatars (vezmi nejmenší ≥100 px). Misskey má jen POST /api/meta (náš
+# GET klient neumí) a ikonu často nemá → vynecháno.
+def fediverse_icon(host, software)
+  return nil unless software.to_s.downcase == "peertube"
+
+  _, cfg, = API.get(host, "/api/v1/config")
+  avs = cfg.is_a?(Hash) ? Array(cfg.dig("instance", "avatars")) : []
+  return nil if avs.empty?
+
+  pick = avs.select { |a| a["width"].to_i >= 100 }.min_by { |a| a["width"].to_i } || avs.max_by { |a| a["width"].to_i }
+  pick && (pick["fileUrl"] || (pick["path"] && "https://#{host}#{pick['path']}"))
+rescue StandardError
+  nil
+end
+
 # Stáhne /api/v2 (+v1) instance. Když holá doména nevrací API, zkusí ještě
 # mastodon.<doména> (servery na subdoméně). Když Mastodon API nikde není (Misskey
 # apod.), spadne na NodeInfo. Vrací [api_host, v2, v1, software] / nil.
@@ -117,7 +133,15 @@ def fetch_instance(host)
     _, v2, = API.get(h, "/api/v2/instance")
     _, v1, = API.get(h, "/api/v1/instance")
     if v2.is_a?(Hash) || v1.is_a?(Hash)
-      sw = nodeinfo(h)&.dig("software", "name") || "mastodon"
+      ni = nodeinfo(h)
+      sw = ni&.dig("software", "name") || "mastodon"
+      # Non-Mastodon software občas vystaví PRÁZDNÉ Mastodon staty (snac: 0/0).
+      # Když jsou prázdné a NodeInfo má čísla, vezmi staty (i title/desc) z NodeInfo.
+      mast_users = v1.is_a?(Hash) ? v1.dig("stats", "user_count").to_i : 0
+      if sw.downcase != "mastodon" && ni && mast_users.zero?
+        nv2, nv1 = nodeinfo_to_instance(ni)
+        return [h, nv2, nv1, sw]
+      end
       return [h, v2, v1, sw]
     end
   end
@@ -142,6 +166,7 @@ def build(host, cat)
   stats = v1["stats"] || {}
   desc = MastodonAPI.strip_html((v2["description"] || v1["short_description"] || v1["description"]).to_s).strip
   thumb = v2.dig("thumbnail", "url") || v1["thumbnail"]
+  thumb ||= fediverse_icon(api_host, software) if software && software.downcase != "mastodon"
   {
     "host" => api_host,
     "title" => (v2["title"] || v1["title"] || api_host),
