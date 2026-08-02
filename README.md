@@ -376,6 +376,13 @@ Přírůstkově: navazuje na existující index + stav (`data/search_state.json`
 viděné status id per zdroj), stáhne jen novější posty, dedupne a vyřadí starší než
 `RETENTION_DAYS` (30). Diakritika se skládá NFKD (`fold`) shodně jako v klientu.
 
+**Okno obnovy počtů** (`SEARCH_REFRESH_DAYS`, default 2; `FEEDS_REFRESH_DAYS`, default 1):
+u postů mladších než tahle hranice se nezastavíme na posledním viděném id, ale
+projdeme je znovu a přepíšeme boosty/oblíbení. Bez toho by si post zaindexovaný
+pár minut po publikaci nesl svoje nuly celou retenci — a Skokani ve Vyhledávání
+se z těch čísel počítají. Nestojí to requesty navíc za jednotlivé posty: čerstvá
+čísla přijdou v týchž stránkách timeline, jen se u nich nezastavíme dřív.
+
 ## `build_instances.rb` — přehled instancí
 
 ```bash

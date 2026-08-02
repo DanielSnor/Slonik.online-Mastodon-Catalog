@@ -41,6 +41,16 @@ NO_CATALOG     = ARGV.include?("--no-catalog")
 REBUILD        = ARGV.include?("--rebuild")   # ignoruj stav i existující index (plný build)
 CUTOFF         = Time.now.utc - RETENTION_DAYS * 86_400
 FEEDS_CUTOFF   = Time.now.utc - FEEDS_RETENTION_DAYS * 86_400
+# Okno obnovy počtů. Přírůstkový build bere jen posty novější než poslední viděné
+# id, takže post zaindexovaný pár minut po publikaci si svoje nuly nese celou dobu
+# retence — a Skokani ve Vyhledávání se z těch čísel počítají. Posty mladší než
+# REFRESH_DAYS proto projdeme znovu i tehdy, když už v indexu jsou; většina boostů
+# a oblíbených přijde právě v těch prvních dnech. Neplatíme za to zvlášť — čísla
+# přijdou v týchž stránkách timeline, jen se u nich nezastavíme dřív.
+REFRESH_DAYS       = (ENV["SEARCH_REFRESH_DAYS"] || "2").to_i
+FEEDS_REFRESH_DAYS = (ENV["FEEDS_REFRESH_DAYS"] || "1").to_i
+REFRESH_CUTOFF       = Time.now.utc - REFRESH_DAYS * 86_400
+FEEDS_REFRESH_CUTOFF = Time.now.utc - FEEDS_REFRESH_DAYS * 86_400
 OUT_PATH       = File.join(Paths::WEB_DIR, "search.json")
 USERS_PATH     = File.join(Paths::WEB_DIR, "users.json")
 CATALOG_PATH   = File.join(Paths::WEB_DIR, "data.json")
@@ -73,6 +83,8 @@ BLOCKED = CatalogConfig.read_handle_set("blocklist.txt", env_key: "BLOCKLIST_FIL
 def blocked?(acct)
   BLOCKED.include?(acct.to_s.downcase)
 end
+
+STATS = Hash.new(0)
 
 # Přírůstkový stav: zdroj (tl:<host> / acct:<id>) => poslední viděné status id.
 STATE = if REBUILD || !File.exist?(STATE_PATH)
@@ -145,7 +157,7 @@ end
 # Přírůstkové stránkování: od nejnovějšího zpět; bere posty NOVĚJŠÍ než poslední
 # viděné id daného zdroje (STATE) a zároveň ≥ CUTOFF. První běh (bez stavu) =
 # plné stažení do CUTOFF. Aktualizuje NEW_STATE na nejnovější viděné id.
-def paginate(host, base_path, seen, source_key, cutoff = CUTOFF)
+def paginate(host, base_path, seen, source_key, cutoff = CUTOFF, refresh_cutoff = REFRESH_CUTOFF)
   last = (STATE[source_key] || "0").to_i
   newest = last
   reachable = false
@@ -159,17 +171,33 @@ def paginate(host, base_path, seen, source_key, cutoff = CUTOFF)
     arr.each do |s|
       sid = s["id"].to_i
       newest = sid if sid > newest
-      if sid <= last                          # došli jsme k už indexovaným
-        stop = true
-        next
-      end
       ts = (Time.parse(s["created_at"]) rescue Time.now.utc)
       if ts < cutoff
         stop = true
         next
       end
+      # Už indexovaný a zároveň starší než okno obnovy → dál zpět nemá smysl jít.
+      # (Jen `sid <= last` by nás zastavilo hned u prvního známého postu, takže by
+      # se počty nikdy neobnovily.)
+      if sid <= last && ts < refresh_cutoff
+        stop = true
+        next
+      end
       rec = record(s, host)
-      seen[rec["id"]] = rec if rec && !seen.key?(rec["id"])
+      next unless rec
+
+      if (known = seen[rec["id"]])
+        # Post už v indexu je — obnovíme jen to, co se v čase mění.
+        next if known["reblogs_count"] == rec["reblogs_count"] &&
+                known["favourites_count"] == rec["favourites_count"]
+
+        known["reblogs_count"]    = rec["reblogs_count"]
+        known["favourites_count"] = rec["favourites_count"]
+        known["engagement"]       = rec["engagement"]
+        STATS[:refreshed] += 1
+      else
+        seen[rec["id"]] = rec
+      end
     end
     break if stop
 
@@ -273,7 +301,8 @@ def main
     log("── Obsahové instance / feeds (#{feeds.size}, retence #{FEEDS_RETENTION_DAYS} dní) ──")
     feeds.each do |host|
       before = seen.size
-      paginate(host, "/api/v1/timelines/public?local=true&limit=40", seen, "feed:#{host}", FEEDS_CUTOFF)
+      paginate(host, "/api/v1/timelines/public?local=true&limit=40", seen, "feed:#{host}",
+               FEEDS_CUTOFF, FEEDS_REFRESH_CUTOFF)
       log("  #{host}: +#{seen.size - before}")
     end
   end
@@ -317,6 +346,8 @@ def main
                                                 "retention_days" => RETENTION_DAYS, "count" => slim.size, "posts" => slim }))
   File.rename("#{OUT_PATH}.tmp", OUT_PATH)
   log("✅ Posty: #{slim.size} → #{OUT_PATH} (#{(File.size(OUT_PATH) / 1_048_576.0).round(2)} MB)")
+  log("   Obnoveno počtů (boosty/oblíbení) u #{STATS[:refreshed]} už indexovaných postů " \
+      "— okno #{REFRESH_DAYS} dní (feeds #{FEEDS_REFRESH_DAYS})")
 
   File.write("#{USERS_PATH}.tmp", JSON.generate({ "generated_at" => Time.now.utc.iso8601, "count" => users.size, "users" => users }))
   File.rename("#{USERS_PATH}.tmp", USERS_PATH)
