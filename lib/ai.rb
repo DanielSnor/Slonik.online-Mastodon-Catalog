@@ -3,7 +3,7 @@
 # lib/ai.rb — sdílená AI kategorizace (Claude API) pro katalog.
 #
 # Jeden zdroj pravdy pro: SYSTEM_PROMPT, build_prompt, call_claude (s prompt
-# cachingem), parse_ai_json, normalizaci výstupu, mapování rodin a ceník.
+# cachingem), parse_ai_json, normalizaci výstupu a mapování rodin.
 # Používají: update_catalog.rb (kategorizace účtů) i classify_instances.rb (zaměření instancí).
 #
 # Konfigurace přes ENV:
@@ -49,15 +49,11 @@ class AI
   VALID_TYPES = %w[person team institution media other].freeze
   DEFAULT_TYPE = "person"
 
-  # Ceník USD / 1M tokenů (list prices, ověřit u Anthropicu).
-  PRICING = {
-    "claude-sonnet-4-5-20250929" => { in: 3.0, out: 15.0 },
-    "claude-opus-4-5-20251101"   => { in: 5.0, out: 25.0 },
-  }.freeze
-  DEFAULT_PRICE = { in: 3.0, out: 15.0 }.freeze
-
-  # Statický system prompt — >1024 tokenů kvůli prompt cachingu + definice rodin
-  # a few-shot příklady (zlepšují trefování sport/local/nature).
+  # Statický system prompt — drží se nad minimem pro prompt caching (2 042 tokenů
+  # měřeno přes /v1/messages/count_tokens 2. 8. 2026). Minimum je závislé na
+  # modelu: 1 024 tokenů u Sonnetu 4.5/5, ale 4 096 u Haiku 4.5 — přechod na
+  # menší model by caching tiše vypnul. Obsahuje definice rodin a few-shot
+  # příklady (zlepšují trefování sport/local/nature).
   SYSTEM_PROMPT = <<~SYS
     Jsi klasifikátor profilů pro katalog českých a slovenských uživatelů sítě Mastodon.
     Pro každý profil dostaneš bio, pole profilu a posledních několik příspěvků.
@@ -179,10 +175,6 @@ class AI
 
   attr_reader :model
 
-  def price
-    PRICING[@model] || DEFAULT_PRICE
-  end
-
   def map_family(poc_family)
     FAMILY_MAP[poc_family.to_s.downcase.strip] || "lifestyle"
   end
@@ -220,8 +212,10 @@ class AI
     PROMPT
   end
 
-  # Zavolá Claude. Vrací hash: { text:, prompt_tokens:, response_tokens:,
-  # cache_creation_tokens:, cache_read_tokens: } nebo { error: }.
+  # Zavolá Claude. Vrací hash: { text:, stop_reason:, prompt_tokens:,
+  # response_tokens:, cache_creation_tokens:, cache_read_tokens: } nebo { error: }.
+  # stop_reason == "max_tokens" znamená useknutou odpověď — volající to musí
+  # odlišit od rozbitého JSONu, jinak vypadá plný strop jako chyba modelu.
   # system: volitelný vlastní system prompt (default = SYSTEM_PROMPT pro účty);
   # předej statický řetězec >1024 tokenů, ať funguje prompt caching.
   def call(prompt, attempt: 1, system: SYSTEM_PROMPT)
@@ -244,6 +238,7 @@ class AI
     if code == 200
       j = JSON.parse(resp.body)
       { text: j.dig("content", 0, "text").to_s,
+        stop_reason: j["stop_reason"],
         prompt_tokens: j.dig("usage", "input_tokens"),
         response_tokens: j.dig("usage", "output_tokens"),
         cache_creation_tokens: j.dig("usage", "cache_creation_input_tokens"),

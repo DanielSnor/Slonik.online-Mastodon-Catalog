@@ -113,6 +113,15 @@ def looks_czsk?(instance, acct, statuses)
   text.scan(CZSK_DIACRITICS).size >= 3
 end
 
+# Proč se odpověď modelu nepodařilo přečíst. Useknutí na stropu max_tokens
+# vypadá v logu stejně jako rozbitý JSON, ale řeší se jinak (zvednout strop,
+# ne ladit prompt) — tak ať je to v logu vidět.
+def ai_failure_reason(res)
+  return "odpověď useknuta (max_tokens=#{AI::MAX_TOKENS})" if res[:stop_reason] == "max_tokens"
+
+  "parse_error"
+end
+
 # Vytvoří plný katalogový záznam z kandidáta (lookup + statusy + AI).
 # force: true = ruční zařazení (manual_accounts.txt) → obejde CZ/SK filtr
 # a nastaví bot: true (typicky boty, které chceme v katalogu napevno).
@@ -148,7 +157,7 @@ def categorize_candidate(cand, force: false)
   return (log("  ❌ @#{acct_full}: AI #{res[:error]}") && nil) if res[:error]
 
   parsed = AICLIENT.parse_json(res[:text])
-  return (log("  ❌ @#{acct_full}: parse_error") && nil) unless parsed
+  return (log("  ❌ @#{acct_full}: #{ai_failure_reason(res)}") && nil) unless parsed
 
   norm = AICLIENT.normalize(parsed, res)
   fam = AICLIENT.map_family(norm["family"])
@@ -352,7 +361,7 @@ def classify_family(rec)
   return nil if res[:error]
 
   parsed = AICLIENT.parse_json(res[:text])
-  return nil unless parsed
+  return (log("  ❌ @#{rec['id']}: #{ai_failure_reason(res)}") && nil) unless parsed
 
   norm = AICLIENT.normalize(parsed, res)
   [AICLIENT.map_family(norm["family"]), norm["tags"]]
