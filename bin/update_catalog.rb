@@ -688,6 +688,9 @@ def main
   status = (JSON.parse(File.read(STATUS_PATH, encoding: "UTF-8")) rescue {})
   status = {} unless status.is_a?(Hash)
   status["catalog_updated"] = Time.now.utc.iso8601
+  # Práh aktivity publikujeme, ať ho frontend nemá zvlášť natvrdo — jinak by změna
+  # ACTIVE_DAYS tiše rozjela filtr „jen aktivní" na webu a hranici uvedenou v FAQ.
+  status["active_days"] = ACTIVE_DAYS
   write_json.call(STATUS_PATH, status)
 
   # 4) Upload na Surfer

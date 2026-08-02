@@ -1465,7 +1465,11 @@
 
   // ---------- Konstanty chování ----------
   var RECENT_DAYS = 90;     // okno pro řez "Nedávno přidané"
-  var ACTIVE_DAYS = 90;     // účet bez příspěvku déle (≈3 měsíce) se nezobrazuje
+  // Účet bez příspěvku déle (≈3 měsíce) se nezobrazuje. Autoritativní hodnotu drží
+  // backend (ACTIVE_DAYS v update_catalog.rb) a publikuje ji ve status.json — tohle
+  // je jen fallback, než se status.json načte. Kdyby si obě strany držely vlastní
+  // číslo, změna na serveru by tiše rozešla filtr na webu i hranici uvedenou v FAQ.
+  var ACTIVE_DAYS = 90;
   var HOVER_DELAY = 400;    // ms než se ukáže hover preview
   var HOVER_GRACE = 200;    // ms tolerance po odjezdu myši
   var TAG_CHIP_COUNT = 10;  // počet nejčastějších tagů jako chips
@@ -1632,16 +1636,23 @@
     placeSliceTabs();
     window.matchMedia('(max-width: 760px)').addEventListener('change', placeSliceTabs);
     renderUpdatedRelative();
-    renderSearchIndexed();
 
     parseHash();
     applyStateToControls();
     window.addEventListener('hashchange', onHashChange);
 
-    fetch('data.json', { cache: 'no-cache' })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var raw = Array.isArray(data) ? data : [];
+    // status.json (pár set bajtů) nese kromě dat aktualizace i práh aktivity, podle
+    // kterého se katalog filtruje — načítáme ho proto SOUČASNĚ s data.json, ať se
+    // filtr „jen aktivní" počítá rovnou z autoritativní hodnoty, ne z fallbacku.
+    Promise.all([
+      fetch('data.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }),
+      fetch('status.json', { cache: 'no-cache' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+    ])
+      .then(function (loaded) {
+        applyStatus(loaded[1]);
+        var raw = Array.isArray(loaded[0]) ? loaded[0] : [];
         // Mastodon custom-emoji shortcody (např. trailing :bot:) se renderují jako
         // holý text — odstraníme je z jména hned, ať je čisté i pro hledání/řazení.
         raw.forEach(function (r) { r.display_name = cleanName(r.display_name); });
@@ -2772,33 +2783,35 @@
     return 'přidán před ' + y + ' ' + plural(y, 'rokem', 'lety', 'lety');
   }
 
-  // Čas posledního buildu vyhledávacího indexu z malého status.json (mění se denně).
-  function renderSearchIndexed() {
-    fetch('status.json', { cache: 'no-cache' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (s) {
-        if (!s) return;
-        if (s.search_indexed) {
-          var d = new Date(s.search_indexed);
-          var el = document.getElementById('indexed-date');
-          var wrap = document.getElementById('footer-indexed');
-          if (!isNaN(d.getTime()) && el && wrap) {
-            var mm = d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes();
-            el.textContent = d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + ' ' + d.getHours() + ':' + mm;
-            wrap.hidden = false;
-          }
-        }
-        if (s.catalog_updated) {                            // datum katalogu — dynamicky (jinak fallback v HTML)
-          var cd = new Date(s.catalog_updated);
-          if (!isNaN(cd.getTime())) {
-            var ce = document.getElementById('catalog-date');
-            if (ce) ce.textContent = cd.getDate() + '. ' + (cd.getMonth() + 1) + '. ' + cd.getFullYear();
-            document.body.setAttribute('data-updated', cd.toISOString().slice(0, 10));
-            renderUpdatedRelative();
-          }
-        }
-      })
-      .catch(function () {});
+  // Aplikuje status.json (načtený spolu s katalogem): práh aktivity, čas posledního
+  // buildu indexu a datum aktualizace katalogu do patičky.
+  function applyStatus(s) {
+    if (!s) return;
+    if (s.active_days > 0) {
+      ACTIVE_DAYS = s.active_days;
+      document.querySelectorAll('.js-active-days').forEach(function (el) {
+        el.textContent = String(s.active_days);
+      });
+    }
+    if (s.search_indexed) {
+      var d = new Date(s.search_indexed);
+      var el = document.getElementById('indexed-date');
+      var wrap = document.getElementById('footer-indexed');
+      if (!isNaN(d.getTime()) && el && wrap) {
+        var mm = d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes();
+        el.textContent = d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + ' ' + d.getHours() + ':' + mm;
+        wrap.hidden = false;
+      }
+    }
+    if (s.catalog_updated) {                            // datum katalogu — dynamicky (jinak fallback v HTML)
+      var cd = new Date(s.catalog_updated);
+      if (!isNaN(cd.getTime())) {
+        var ce = document.getElementById('catalog-date');
+        if (ce) ce.textContent = cd.getDate() + '. ' + (cd.getMonth() + 1) + '. ' + cd.getFullYear();
+        document.body.setAttribute('data-updated', cd.toISOString().slice(0, 10));
+        renderUpdatedRelative();
+      }
+    }
   }
 
   function renderUpdatedRelative() {

@@ -743,7 +743,7 @@
             a účet odstraníme.</p>
           <h3>Proč některé účty v záložce Účty nevidím?</h3>
           <p>V <strong>Účtech</strong> ukazujeme jen <strong>aktivní</strong> účty — s příspěvkem
-            za posledních <strong>90 dní</strong>. Účet, který delší dobu mlčí, se dočasně skryje
+            za posledních <strong><span class="js-active-days">90</span> dní</strong>. Účet, který delší dobu mlčí, se dočasně skryje
             a vrátí se, jakmile zase něco napíše. (Automatické účty v katalogu nejsou vůbec —
             viz níže.) Ve <strong>Vyhledávání</strong> a <strong>Postech</strong> tahle hranice
             neplatí.</p>
@@ -808,7 +808,7 @@
             and we'll remove the account.</p>
           <h3>Why don't I see some accounts in the Accounts tab?</h3>
           <p>In <strong>Accounts</strong> we only show <strong>active</strong> accounts — those
-            that posted within the last <strong>90 days</strong>. An account that goes quiet is
+            that posted within the last <strong><span class="js-active-days">90</span> days</strong>. An account that goes quiet is
             temporarily hidden and returns as soon as it posts again. (Bots aren't in the catalog
             at all — see below.) This limit doesn't apply in <strong>Search</strong> and
             <strong>Posts</strong>.</p>
@@ -883,7 +883,7 @@
           <p>Metriky jsou záměrně jednoduché a počítané z veřejných čísel: <strong>engagement</strong>
             = boosty + oblíbení; <strong>Skokani</strong> porovnávají příspěvek s průměrným výkonem
             jeho účtu (min. 3 posty). V záložce Účty navíc ukazujeme jen účty aktivní za posledních
-            90 dní. Žádné vážené skóre ani skrytá magie — vše jde dopočítat z dat, která zobrazujeme.</p>
+            <span class="js-active-days">90</span> dní. Žádné vážené skóre ani skrytá magie — vše jde dopočítat z dat, která zobrazujeme.</p>
           <h3>Provoz a publikace</h3>
           <p>Hotová data (katalog, žebříčky, vyhledávací index, přehled instancí) se nahrávají
             na statický hosting. Kód je oddělený od dat a přístupové tokeny nikdy nejsou
@@ -922,7 +922,7 @@
           <p>Metrics are deliberately simple and computed from public numbers:
             <strong>engagement</strong> = boosts + favourites; <strong>risers</strong> compare a
             post to its account's average performance (min. 3 posts). The Accounts tab additionally
-            shows only accounts active in the last 90 days. No weighted scores or hidden magic —
+            shows only accounts active in the last <span class="js-active-days">90</span> days. No weighted scores or hidden magic —
             everything can be derived from the data we display.</p>
           <h3>Operation and publishing</h3>
           <p>The finished data (catalog, charts, search index, instance overview) is uploaded
