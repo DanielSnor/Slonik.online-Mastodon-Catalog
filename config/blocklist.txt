@@ -5,6 +5,8 @@
 #   - spam / nevhodné / omylem zařazené účty.
 #
 # Formát:  username@instance   (porovnává se case-insensitive)
+# K záznamu připiš komentářem DŮVOD a datum — u žádostí o odstranění je tenhle
+# soubor jediná stopa, proč tam účet není, a bez důvodu se to po roce nedohledá.
 # Kdo ho uplatňuje:
 #   update_catalog.rb   odstraní z data.json, vyřadí z kandidátů i z manual_accounts.txt
 #   build_search.rb     vyřadí z search.json i users.json — VČETNĚ už postaveného
@@ -21,4 +23,4 @@
 # spammer@nejakainstance.cz
 # nechcetubyt@witter.cz
 
-zdenekk@zpravobot.news   # žádost vlastníka o odstranění (vyřízeno 6/2026)
+zdenekk@zpravobot.news   # převzato ze serveru (config/ z 15. 6. 2026); důvod nezaznamenán
