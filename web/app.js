@@ -751,6 +751,7 @@
     if (logo) {
       var img = document.createElement('img');
       img.className = 'inst-logo'; img.src = logo; img.alt = ''; img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';   // logo se tahá z cizí instance, viz buildAvatar
       img.onerror = function () {
         var fb = instanceFallback(i); img.replaceWith(fb);
       };
@@ -2149,6 +2150,10 @@
       img.src = avatarUrl;
       img.alt = '';
       img.loading = 'lazy';
+      // Avatary se načítají přímo z domovských instancí (~90 různých serverů), takže
+      // každý z nich vidí IP návštěvníka. IP zabránit nejde bez proxy, ale aspoň jim
+      // neposíláme referrer, tedy informaci, KTEROU stránku Sloníka si kdo prohlíží.
+      img.referrerPolicy = 'no-referrer';
       img.onerror = function () { avatar.classList.add('avatar-fallback'); img.remove(); };
       avatar.appendChild(img);
     } else {
@@ -2348,6 +2353,7 @@
 
     var frame = document.createElement('iframe');
     frame.src = embedUrl;
+    frame.referrerPolicy = 'no-referrer';
     frame.className = 'embed-frame';
     frame.setAttribute('allowfullscreen', '');
     frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox');
