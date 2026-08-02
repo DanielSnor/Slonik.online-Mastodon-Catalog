@@ -2579,9 +2579,14 @@
       var el = document.createElement(tag.toLowerCase());
 
       if (tag === 'SPAN') {
-        // Zachovat Mastodon třídy pro zkrácené URL (invisible/ellipsis).
-        var cls = node.getAttribute('class') || '';
-        if (/\b(invisible|ellipsis)\b/.test(cls)) el.className = cls;
+        // Zachovat Mastodon třídy pro zkrácené URL (invisible/ellipsis) — ale JEN je.
+        // Dřív se testovalo na výskyt, a kopíroval se celý atribut: class="invisible
+        // sidebar-open" z cizí instance tak propašovalo libovolnou třídu z našeho CSS
+        // do vykresleného příspěvku.
+        var keep = (node.getAttribute('class') || '').split(/\s+/).filter(function (c) {
+          return c === 'invisible' || c === 'ellipsis';
+        });
+        if (keep.length) el.className = keep.join(' ');
       }
 
       if (tag === 'A') {
