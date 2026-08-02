@@ -375,10 +375,10 @@ def main
 
   # Blocklist (blocklist.txt) — handle, které se VŽDY vyřadí: odstraní z katalogu
   # a nikdy znovu nepřidají (řeší i žádosti vlastníků o odstranění z patičky webu).
-  blocklist = CatalogConfig.read_list("blocklist.txt", env_key: "BLOCKLIST_FILE").to_set
+  blocklist = CatalogConfig.read_handle_set("blocklist.txt", env_key: "BLOCKLIST_FILE")
   if blocklist.any?
     before = catalog.size
-    catalog = catalog.reject { |r| blocklist.include?(r["id"]) }
+    catalog = catalog.reject { |r| blocklist.include?(r["id"].to_s.downcase) }
     removed = before - catalog.size
     log("Blocklist: #{blocklist.size} účtů | odebráno z katalogu: #{removed}") if removed.positive? || DRY_RUN
   end
@@ -419,7 +419,7 @@ def main
   existing_ids = catalog.map { |r| r["id"].to_s.downcase }.to_set
   new_cands = candidates.reject do |c|
     existing_ids.include?(c["acct"].to_s.downcase) || skipped_set.include?(c["acct"]) ||
-      blocklist.include?(c["acct"]) || dead_instances.include?(c["instance"].to_s.downcase) ||
+      blocklist.include?(c["acct"].to_s.downcase) || dead_instances.include?(c["instance"].to_s.downcase) ||
       failed_set.include?(c["acct"]) || MastodonAPI.bridge?(c["instance"])
   end
   new_cands = new_cands.first(LIMIT_NEW) if LIMIT_NEW.positive?
@@ -428,8 +428,8 @@ def main
   # botů, označí bot: true. manual_new = ty, co ještě v katalogu nejsou. Blocklist
   # má přednost (kdyby byl handle omylem v obou).
   manual_handles = CatalogConfig.read_list("manual_accounts.txt", env_key: "MANUAL_FILE")
-                                .reject { |h| blocklist.include?(h) }
-  manual_set = manual_handles.to_set
+                                .reject { |h| blocklist.include?(h.downcase) }
+  manual_set = manual_handles.map(&:downcase).to_set
   manual_new = manual_handles.reject { |h| existing_ids.include?(h.to_s.downcase) }
 
   log("Katalog: #{catalog.size} účtů | kandidátů: #{candidates.size} | " \
@@ -483,7 +483,7 @@ def main
 
     # Vyřaď boty (skutečný příznak z refreshe), které nejsou ručně povolené.
     before_bots = refreshed.size
-    refreshed = refreshed.reject { |r| r["bot"] && !manual_set.include?(r["id"]) }
+    refreshed = refreshed.reject { |r| r["bot"] && !manual_set.include?(r["id"].to_s.downcase) }
     dropped = before_bots - refreshed.size
     log("  🤖 Odebráno botů (mimo manual_accounts.txt): #{dropped}") if dropped.positive?
   end

@@ -154,6 +154,17 @@ def main
     abort("❌ JSONL je prázdný: #{INPUT_PATH}")
   end
 
+  # Blocklist se uplatní i tady: účet mohl být vyřazen až v průběhu týdne, kdy už
+  # měl posty v JSONL. Bez toho by se ještě jednou objevil v žebříčcích.
+  blocked = CatalogConfig.read_handle_set("blocklist.txt", env_key: "BLOCKLIST_FILE")
+  if blocked.any?
+    before = posts.size
+    posts = posts.reject { |p| blocked.include?("#{p['account_username']}@#{p['account_instance']}".downcase) }
+    dropped = before - posts.size
+    log("🚫 Blocklist: vyřazeno #{dropped} postů") if dropped.positive?
+    abort("❌ Po vyřazení blocklistu nezbyly žádné posty") if posts.empty?
+  end
+
   accounts = posts.map { |p| "#{p['account_username']}@#{p['account_instance']}" }.uniq
   log("Načteno postů: #{posts.size} | unikátních účtů: #{accounts.size}")
 

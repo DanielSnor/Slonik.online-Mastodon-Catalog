@@ -48,6 +48,14 @@ USER_AGENT     = "mastokatalog-collect/1.0 (+https://katalog-test.zpravobot.news
 # „Obsahové" instance (boti/zprávy) — sbíráme z jejich LOKÁLNÍ timeline (vč. botů),
 # mimo katalog. Posty z nich projdou stejnými žebříčky jako katalogové.
 FEEDS          = CatalogConfig.read_list("feeds.txt", env_key: "FEEDS_FILE")
+# Blocklist — katalog už vyřazené účty neobsahuje, ale lokální timeline „obsahových"
+# instancí (FEEDS) jde mimo katalog, takže by je propustila. Filtrujeme na obou
+# cestách; u katalogových účtů to navíc ušetří zbytečné API dotazy.
+BLOCKED        = CatalogConfig.read_handle_set("blocklist.txt", env_key: "BLOCKLIST_FILE")
+
+def blocked?(acct)
+  BLOCKED.include?(acct.to_s.downcase)
+end
 
 def log(msg)
   puts "#{Time.now.utc.strftime('%H:%M:%S')} #{msg}"
@@ -289,6 +297,7 @@ def main
     next if acct.nil?
 
     state_key = "#{acct[:username]}@#{acct[:instance]}"
+    next if blocked?(state_key)
 
     # #1: použij uložené id; lookup jen jako fallback.
     account_id = acct[:account_id]
@@ -334,7 +343,10 @@ def main
     fstatuses = fetch_feed_day(host)
     fnew = 0
     fstatuses.each do |s|
-      post = build_post(s, feed_acct(s, host))
+      fa = feed_acct(s, host)
+      next if blocked?("#{fa[:username]}@#{fa[:instance]}")
+
+      post = build_post(s, fa)
       if seen[post["id"]]
         total_dupe += 1
         next

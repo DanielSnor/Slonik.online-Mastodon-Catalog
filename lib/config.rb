@@ -15,6 +15,7 @@
 # .gitignore, NIKDY se necommituje. Šablona je config.env.example.
 
 require "net/http"
+require "set"
 require "uri"
 require_relative "paths"
 
@@ -53,6 +54,17 @@ module CatalogConfig
       line = raw.sub(/#.*/, "").strip
       line.empty? ? nil : line
     end
+  end
+
+  # Totéž jako read_list, ale pro seznamy Mastodon HANDLŮ (blocklist.txt,
+  # manual_accounts.txt): vrací Set v lowercase.
+  #
+  # Mastodon handle je case-insensitive (@Franta@x.cz == @franta@x.cz), takže
+  # porovnávat se MUSÍ přes downcase. Jinak handle zapsaný jinou velikostí písmen
+  # tiše neudělá nic — a u blocklistu to znamená nevyřízenou žádost o odstranění.
+  # Volající proto porovnává `set.include?(id.downcase)`.
+  def self.read_handle_set(basename, env_key: nil)
+    read_list(basename, env_key: env_key).map(&:downcase).to_set
   end
 end
 

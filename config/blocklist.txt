@@ -1,14 +1,19 @@
-# Blocklist — účty, které se z katalogu VŽDY vyřadí (jeden handle na řádek; # = komentář).
+# Blocklist — účty, které se VŽDY vyřadí z CELÉ pipeline (jeden handle na řádek; # = komentář).
 #
 # K čemu:
 #   - žádost vlastníka o odstranění (viz patička webu „napiš na @zpravobot"),
 #   - spam / nevhodné / omylem zařazené účty.
 #
-# Formát:  username@instance
-# Chování update_catalog.rb:
-#   - odstraní účet z katalogu (zmizí z data.json při příštím zápisu),
-#   - nikdy ho znovu nepřidá (vyřadí z kandidátů i z manual_accounts.txt),
-#   - má přednost před manual_accounts.txt.
+# Formát:  username@instance   (porovnává se case-insensitive)
+# Kdo ho uplatňuje:
+#   update_catalog.rb   odstraní z data.json, vyřadí z kandidátů i z manual_accounts.txt
+#   build_search.rb     vyřadí z search.json i users.json — VČETNĚ už postaveného
+#                       indexu, takže odstranění zabere hned při dalším běhu
+#   collect_posts.rb    přeskočí účet i v lokální timeline „obsahových" instancí
+#   consolidate_posts.rb vyhodí jeho posty z týdenních žebříčků
+#
+# Samotné smazání z data.json NESTAČÍ: discovery účet znovu najde a vyhledávání
+# si posty tahá z timeline instancí úplně mimo katalog.
 #
 # Přežije rebuild data.json i re-discovery. Override cesty: BLOCKLIST_FILE=/cesta/jine.txt
 #

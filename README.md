@@ -279,10 +279,17 @@ vyřazuje) nebo účty mimo CZ/SK filtr. `update_catalog` je vynuceně zařadí 
 filtr i vyřazení botů), zkategorizuje a označí `bot: true`; metriky vč.
 `last_status_at` se jim refreshují jako ostatním. Přežije i rebuild data.json.
 
-**Odstranění účtu** (`blocklist.txt`): handle (jeden na řádek), které se z katalogu
-**vždy vyřadí** — odstraní z data.json a už nikdy nepřidají (přebije discovery i
-manual). Slouží i pro žádosti vlastníků o odstranění (patička webu). Pouhé smazání
-z data.json nestačí — discovery by účet znovu přidala.
+**Odstranění účtu** (`blocklist.txt`): handle (jeden na řádek), které se **vždy
+vyřadí z celé pipeline** — ne jen z katalogu. Uplatňují ho `update_catalog`
+(data.json + kandidáti), `build_search` (search.json i users.json, včetně už
+postaveného indexu), `collect_posts` (katalogové účty i lokální timeline feedů)
+a `consolidate_posts` (žebříčky týdne). Přebije discovery i `manual_accounts.txt`.
+Slouží pro žádosti vlastníků o odstranění (patička webu). Pouhé smazání
+z data.json nestačí — discovery by účet znovu přidala, a vyhledávání si posty
+tahá z timeline instancí úplně mimo katalog.
+
+Porovnání je **case-insensitive** (Mastodon handle je nezávislý na velikosti
+písmen), takže `@Franta@x.cz` v blocklistu zabere i na `@franta@x.cz`.
 
 **Cyklus v produkci:** `discover_accounts.rb` (rozšíří kandidáty) →
 `update_catalog.rb` (dokategorizuje nové, refreshne staré, uploadne).

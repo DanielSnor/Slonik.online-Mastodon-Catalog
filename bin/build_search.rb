@@ -63,6 +63,17 @@ end
 
 API = MastodonAPI.new(logger: method(:log))
 
+# Blocklist (blocklist.txt) — účty, které si vyžádaly odstranění, nebo je vyřadil
+# kurátor. Katalog je řeší v update_catalog.rb, ale index vyhledávání si posty tahá
+# z LOKÁLNÍCH TIMELINE instancí, tedy úplně mimo katalog — bez tohohle filtru by
+# vyřazený účet dál visel ve Vyhledávání i v users.json. Filtr se uplatní i na už
+# postavený index, takže odstranění zabere hned při dalším přírůstkovém běhu.
+BLOCKED = CatalogConfig.read_handle_set("blocklist.txt", env_key: "BLOCKLIST_FILE")
+
+def blocked?(acct)
+  BLOCKED.include?(acct.to_s.downcase)
+end
+
 # Přírůstkový stav: zdroj (tl:<host> / acct:<id>) => poslední viděné status id.
 STATE = if REBUILD || !File.exist?(STATE_PATH)
           {}
@@ -81,7 +92,7 @@ def catalog_map
   return {} unless File.exist?(CATALOG_PATH)
 
   JSON.parse(File.read(CATALOG_PATH, encoding: "UTF-8"))
-      .select { |r| r["id"].to_s.include?("@") }
+      .select { |r| r["id"].to_s.include?("@") && !blocked?(r["id"]) }
       .to_h { |r| [r["id"], r] }
 rescue StandardError
   {}
@@ -99,6 +110,8 @@ def record(status, instance)
 
   user = acct["acct"].to_s
   user = "#{user}@#{instance}" unless user.include?("@")
+  return nil if blocked?(user)
+
   name = acct["display_name"].to_s.empty? ? acct["username"].to_s : acct["display_name"]
   {
     "id" => "#{instance}:#{status['id']}",
@@ -202,7 +215,8 @@ end
 
 def main
   mode = REBUILD ? "PLNÝ (--rebuild)" : "přírůstkový"
-  log("Build search | retence #{RETENTION_DAYS} dní (od #{CUTOFF.strftime('%Y-%m-%d')}) | #{mode} | katalog=#{!NO_CATALOG}")
+  log("Build search | retence #{RETENTION_DAYS} dní (od #{CUTOFF.strftime('%Y-%m-%d')}) | #{mode} | " \
+      "katalog=#{!NO_CATALOG} | blocklist=#{BLOCKED.size}")
   instances = CatalogConfig.read_list("instances.txt", env_key: "INSTANCES_FILE")
   feeds = CatalogConfig.read_list("feeds.txt", env_key: "FEEDS_FILE")
   feeds_set = feeds.to_set
@@ -222,8 +236,13 @@ def main
       (JSON.parse(File.read(USERS_PATH, encoding: "UTF-8"))["users"] rescue []).each { |u| base_users[u["a"]] = u }
     end
     old = (JSON.parse(File.read(OUT_PATH, encoding: "UTF-8"))["posts"] rescue [])
+    dropped_blocked = 0
     old.each do |p|
       a = p["account_acct"].to_s
+      if blocked?(a)   # účet přibyl do blocklistu → vypadne i ze starého indexu
+        dropped_blocked += 1
+        next
+      end
       p["account_username"] ||= a.split("@").first
       p["account_instance"] ||= a.split("@", 2)[1]
       if (u = base_users[a])
@@ -234,6 +253,7 @@ def main
       seen[p["id"]] = p if (Time.parse(p["created_at"]) rescue Time.at(0)) >= post_cutoff.call(p)
     end
     log("  Základ z existujícího indexu: #{seen.size} postů (v retenci)")
+    log("  🚫 Odebráno postů z blocklistu: #{dropped_blocked}") if dropped_blocked.positive?
   end
 
   scraped = instances.to_set
