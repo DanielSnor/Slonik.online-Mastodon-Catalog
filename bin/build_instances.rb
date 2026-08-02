@@ -71,6 +71,15 @@ end
 
 # NodeInfo — univerzální fediverse standard (funguje i bez Mastodon API: Misskey,
 # Friendica…). Vrací parsed nodeinfo 2.x, nebo nil.
+#
+# Memoizované: discovery + samotný dokument jsou dva requesty a fetch_instance se
+# na software ptá ve dvou různých větvích. Bez cache se pro nedostupný host
+# stahovaly dvakrát.
+def nodeinfo_cached(host)
+  @nodeinfo_cache ||= {}
+  @nodeinfo_cache.fetch(host) { @nodeinfo_cache[host] = nodeinfo(host) }
+end
+
 def nodeinfo(host)
   _, disc, = API.get(host, "/.well-known/nodeinfo")
   return nil unless disc.is_a?(Hash)
@@ -129,11 +138,16 @@ end
 def fetch_instance(host)
   candidates = [host]
   candidates << "mastodon.#{host}" unless host.start_with?("mastodon.")
+
   candidates.each do |h|
     _, v2, = API.get(h, "/api/v2/instance")
+    # v1 nese souhrnné statistiky (user_count/status_count), které v2 nemá — u
+    # Mastodonu jsou tedy potřeba oba. Nemá ale smysl ho zkoušet, když v2 vrátilo
+    # něco jiného než hash A host je zjevně mrtvý; to řeší DEAD_HOST_LIMIT v API.
     _, v1, = API.get(h, "/api/v1/instance")
+    ni = nodeinfo_cached(h)
+
     if v2.is_a?(Hash) || v1.is_a?(Hash)
-      ni = nodeinfo(h)
       sw = ni&.dig("software", "name") || "mastodon"
       # Non-Mastodon software občas vystaví PRÁZDNÉ Mastodon staty (snac: 0/0).
       # Když jsou prázdné a NodeInfo má čísla, vezmi staty (i title/desc) z NodeInfo.
@@ -144,10 +158,10 @@ def fetch_instance(host)
       end
       return [h, v2, v1, sw]
     end
-  end
-  # Bez Mastodon API → NodeInfo (Misskey, Friendica, Hubzilla…).
-  candidates.each do |h|
-    ni = nodeinfo(h)
+
+    # Bez Mastodon API → jedeme z NodeInfo (Misskey, Friendica, Hubzilla…).
+    # Dřív se tenhle pokus dělal až v druhém průchodu přes kandidáty, takže se
+    # NodeInfo pro tentýž host stahovalo dvakrát.
     next unless ni
 
     v2, v1 = nodeinfo_to_instance(ni)
