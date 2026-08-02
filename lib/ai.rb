@@ -138,11 +138,11 @@ class AI
        "description": "Programátor se zájmem o Linux, self-hosting a open source; sdílí technické postřehy."}
 
     Profil: oficiální profil státního úřadu, informuje o své agendě a novinkách.
-    → {"type": "institution", "family": "government", "tags": ["government", "public_administration", "official"],
+    → {"type": "institution", "family": "politics", "tags": ["government", "public_administration", "official"],
        "description": "Oficiální účet státního úřadu informující o své agendě."}
 
     Profil: internetový magazín, několik redaktorů, recenze a články k jednomu tématu.
-    → {"type": "media", "family": "science_tech", "tags": ["magazine", "reviews", "technology"],
+    → {"type": "media", "family": "tech", "tags": ["magazine", "reviews", "technology"],
        "description": "Internetový magazín s několika redaktory zaměřený na technologie."}
 
     Profil: „jsme parta nadšenců", společně pořádáme akce a tvoříme komunitní projekt.
@@ -158,6 +158,18 @@ class AI
     Odpověz POUZE jedním JSON objektem, bez markdown bloků, bez komentářů, bez textu navíc:
     {"type": "...", "family": "...", "tags": ["...", "..."], "description": "..."}
   SYS
+
+  # Pojistka na few-shot příklady: dřív dva z nich ukazovaly rodiny "government"
+  # a "science_tech", což jsou názvy rodin KATALOGU, ne platné hodnoty z FAMILIES.
+  # Model je občas napodobil, normalize je srazil na "other" a účet spadl do koše
+  # „lifestyle" — tiše, bez chyby. Tohle to nechá spadnout hned při načtení.
+  example_families = SYSTEM_PROMPT.scan(/"family":\s*"([^"]+)"/).flatten
+                                  .reject { |f| f == "..." }.uniq
+  bad_examples = example_families - FAMILIES
+  unless bad_examples.empty?
+    raise "SYSTEM_PROMPT ukazuje neplatné rodiny: #{bad_examples.join(', ')} " \
+          "(platné jsou #{FAMILIES.join('/')}; rodiny katalogu sem nepatří)"
+  end
 
   def initialize(logger: nil, model: nil, api_key: nil)
     @log = logger || ->(_m) {}

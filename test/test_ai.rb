@@ -36,6 +36,17 @@ class TestAI < Minitest::Test
                  "včelař ani zahrádkář nepatří pod „věda a technika“"
   end
 
+  # Dva few-shot příklady dřív ukazovaly rodiny katalogu ("government",
+  # "science_tech") místo hodnot z FAMILIES. Model je napodobil, normalize je
+  # srazil na "other" a účet tiše spadl do koše. Načtení AI to teď zvedne.
+  def test_prompt_examples_use_only_valid_families
+    shown = AI::SYSTEM_PROMPT.scan(/"family":\s*"([^"]+)"/).flatten
+                             .reject { |f| f == "..." }.uniq
+    refute_empty shown, "prompt by měl obsahovat few-shot příklady"
+    assert_empty shown - AI::FAMILIES,
+                 "příklady smí ukazovat jen rodiny z FAMILIES, ne rodiny katalogu"
+  end
+
   def test_every_family_maps_to_a_catalog_family
     assert_empty AI::FAMILY_MAP.values.uniq - AI::VALID_CATALOG_FAMILIES
     assert_empty AI::FAMILIES - AI::FAMILY_MAP.keys

@@ -285,10 +285,12 @@ a přeurčí jen `type` z uloženého bia (bio-only → levné, ~$0.004/účet),
 a throttle uploadem.
 
 **Rodina** (`family`): `news` / `sport` / `culture` / `science_tech` / `nature` /
-`humor` / `government` / `local` / `lifestyle` — shodné s filtrem na webu. Model klasifikuje
-do PoC rodin, `AI::FAMILY_MAP` je překlápí na katalogové; **chybějící klíč v mapě
-znamená tichý pád do `lifestyle`**, proto `lib/ai.rb` při načtení ověří, že mapování
-pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede **aktivní**
+`humor` / `government` / `local` / `lifestyle` — shodné s filtrem na webu. Model
+klasifikuje do PoC rodin, `AI::FAMILY_MAP` je překlápí na katalogové; **chybějící
+klíč v mapě znamená tichý pád do `lifestyle`**, proto `lib/ai.rb` při načtení ověří,
+že mapování pokrývá celé `FAMILIES`. Ze stejného důvodu kontroluje i to, že
+few-shot příklady v promptu ukazují jen rodiny z `FAMILIES` — příklad s rodinou
+katalogu model napodobí a `normalize` ho pak srazí na `other`, tedy zase do koše. Přeznačení stávajících: `--refamily` projede **aktivní**
 účty v koši `lifestyle` (přebij přes `REFAMILY_FROM=a,b`) a přeurčí `family` +
 `categories`. Na rozdíl od `--retype` potřebuje i posty (rodina se řídí převažujícím
 tématem, ne biem), takže stojí jako nový účet (~$0.0079/účet).
