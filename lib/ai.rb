@@ -27,12 +27,23 @@ class AI
   FAMILIES = %w[news politics sport tech culture nature fun local other].freeze
 
   # PoC rodina → rodina produkčního katalogu (zdroj pravdy pro celý projekt).
+  # POZOR: každá rodina z FAMILIES sem MUSÍ patřit — chybějící klíč spadne na
+  # "lifestyle" (viz map_family), takže by se tiše slil s košem „other".
   FAMILY_MAP = {
     "news" => "news", "politics" => "government", "sport" => "sport",
     "tech" => "science_tech", "culture" => "culture", "nature" => "science_tech",
-    "fun" => "humor", "other" => "lifestyle",
+    "fun" => "humor", "local" => "local", "other" => "lifestyle",
   }.freeze
-  VALID_CATALOG_FAMILIES = %w[news sport culture science_tech humor government business lifestyle].freeze
+  VALID_CATALOG_FAMILIES = %w[news sport culture science_tech humor government local lifestyle].freeze
+
+  # Pojistka proti tichému slití rodiny do „lifestyle": kdyby někdo přidal rodinu
+  # do FAMILIES (nebo do SYSTEM_PROMPTu) a zapomněl na mapování, spadne to hned
+  # při načtení, ne až po tisícovce zaplacených klasifikací.
+  missing = FAMILIES - FAMILY_MAP.keys
+  raise "FAMILY_MAP nemá mapování pro: #{missing.join(', ')}" unless missing.empty?
+
+  unmapped = FAMILY_MAP.values.uniq - VALID_CATALOG_FAMILIES
+  raise "FAMILY_MAP mapuje na neznámé rodiny: #{unmapped.join(', ')}" unless unmapped.empty?
 
   # Typ účtu (pole "type") — hodnoty se shodují s filtrem na frontendu.
   VALID_TYPES = %w[person team institution media other].freeze

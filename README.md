@@ -250,13 +250,23 @@ ENV: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_DELAY`, `MASTODON_DELAY`, `MASTODON_TO
 `CATALOG_PATH` (web/data.json), `CANDIDATES_PATH` (discovered_accounts.json),
 `STATUSES_LIMIT` (20), `LIMIT_NEW` (0 = bez limitu), `SURFER_*`.
 Flagy: `--dry-run`, `--no-categorize`, `--no-refresh`, `--no-upload`,
-`--no-czsk-filter`, `--recheck-skipped`, `--retype`. Původní `data.json` se zálohuje (`.bak`).
+`--no-czsk-filter`, `--recheck-skipped`, `--retype`, `--refamily`. Původní `data.json`
+se zálohuje (`.bak`).
 
 **Typ účtu** (`type`): AI klasifikuje `person` / `team` / `institution` / `media` /
 `other` (default `person`) — shodné s filtrem na webu. Nové účty dostanou typ při
 kategorizaci. Přeznačení stávajících: `--retype` projede **aktivní** účty (≤90 dní)
 a přeurčí jen `type` z uloženého bia (bio-only → levné, ~$0.004/účet), s checkpointem
 a throttle uploadem.
+
+**Rodina** (`family`): `news` / `sport` / `culture` / `science_tech` / `humor` /
+`government` / `local` / `lifestyle` — shodné s filtrem na webu. Model klasifikuje
+do PoC rodin, `AI::FAMILY_MAP` je překlápí na katalogové; **chybějící klíč v mapě
+znamená tichý pád do `lifestyle`**, proto `lib/ai.rb` při načtení ověří, že mapování
+pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede **aktivní**
+účty v koši `lifestyle` (přebij přes `REFAMILY_FROM=a,b`) a přeurčí `family` +
+`categories`. Na rozdíl od `--retype` potřebuje i posty (rodina se řídí převažujícím
+tématem, ne biem), takže stojí jako nový účet (~$0.0079/účet).
 
 **Cache přeskočených** (`skipped_noncz.json`): ne-CZ/SK účty, které filtr zamítl,
 se uloží a příští běh je už vůbec nedotazuje (žádné opakované lookup+statusy).

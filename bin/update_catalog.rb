@@ -21,6 +21,7 @@
 #   ruby update_catalog.rb --no-czsk-filter            # kategorizovat i ne-CZ/SK
 #   ruby update_catalog.rb --recheck-skipped           # ignoruj cache přeskočených
 #   ruby update_catalog.rb --retype                    # přeznač type u aktivních (bio-only, levné)
+#   ruby update_catalog.rb --refamily                  # přeznač family u aktivních v koši „lifestyle"
 #
 # ENV: ANTHROPIC_API_KEY, AI_MODEL, AI_DELAY, MASTODON_DELAY, MASTODON_TOKEN,
 #      ACTIVE_DAYS (90), CATALOG_PATH (web/data.json),
@@ -46,6 +47,11 @@ NO_REFRESH      = ARGV.include?("--no-refresh")
 NO_UPLOAD       = ARGV.include?("--no-upload")
 RECHECK_SKIPPED = ARGV.include?("--recheck-skipped") # ignoruj cache přeskočených
 RETYPE          = ARGV.include?("--retype")          # přeznač type u aktivních účtů
+REFAMILY        = ARGV.include?("--refamily")        # přeznač family u aktivních v koši „lifestyle"
+# Rodiny, které --refamily bere jako „k přeznačení". Default je koš `lifestyle`
+# — dokud rodina `local` neměla vlastní mapování (viz AI::FAMILY_MAP), padaly
+# do něj i regionální účty a nešly od nezařaditelných odlišit.
+REFAMILY_FROM   = (ENV["REFAMILY_FROM"] || "lifestyle").split(",").map(&:strip).reject(&:empty?)
 
 CATALOG_PATH    = ENV["CATALOG_PATH"] || File.join(Paths::WEB_DIR, "data.json")
 STATUS_PATH     = ENV["STATUS_PATH"] || File.join(Paths::WEB_DIR, "status.json")
@@ -264,6 +270,32 @@ def classify_type(rec)
   parsed && AICLIENT.normalize(parsed, res)["type"]
 end
 
+# Přeznačení rodiny u už katalogizovaného účtu. Na rozdíl od typu (bio stačí)
+# se rodina řídí PŘEVAŽUJÍCÍM TÉMATEM účtu, takže potřebuje i posty — proto plný
+# lookup + statusy + AI, stejně jako u nového účtu. Vrací [family, tags] / nil.
+def classify_family(rec)
+  username, instance = rec["id"].to_s.split("@", 2)
+  return nil unless username && instance
+
+  acct = API.lookup(instance, username)
+  return nil unless acct
+
+  statuses = API.statuses(instance, acct["id"], limit: STATUSES_LIMIT, exclude_replies: true)
+  res = AICLIENT.call(AICLIENT.build_prompt(acct, statuses))
+  return nil if res[:error]
+
+  parsed = AICLIENT.parse_json(res[:text])
+  return nil unless parsed
+
+  norm = AICLIENT.normalize(parsed, res)
+  [AICLIENT.map_family(norm["family"]), norm["tags"]]
+end
+
+# Účty, na které cílí --refamily: aktivní a sedící v některé z REFAMILY_FROM rodin.
+def refamily_targets(catalog)
+  catalog.select { |r| r["id"].to_s.include?("@") && active?(r) && REFAMILY_FROM.include?(r["family"]) }
+end
+
 # Režim --retype: přeznačí pole "type" u AKTIVNÍCH účtů (kolektiv→team, úřad→
 # institution, magazín→media…). Levné (bio-only), s checkpointem + throttle uploadem.
 def run_retype(catalog)
@@ -317,7 +349,7 @@ end
 
 def main
   abort("❌ Katalog nenalezen: #{CATALOG_PATH}") unless File.exist?(CATALOG_PATH)
-  abort("❌ Kandidáti nenalezeni: #{CANDIDATES_PATH}") unless RETYPE || File.exist?(CANDIDATES_PATH)
+  abort("❌ Kandidáti nenalezeni: #{CANDIDATES_PATH}") unless RETYPE || REFAMILY || File.exist?(CANDIDATES_PATH)
 
   catalog = JSON.parse(File.read(CATALOG_PATH, encoding: "UTF-8"))
   catalog = catalog.is_a?(Array) ? catalog : []
@@ -326,6 +358,15 @@ def main
   # se provede v rámci běžného průchodu (refresh+moved → přetypování → zápis).
   if RETYPE && DRY_RUN
     run_retype(catalog)
+    return
+  end
+
+  # --refamily --dry-run: kolik účtů by se přeznačilo a za kolik (nic nemění).
+  if REFAMILY && DRY_RUN
+    targets = refamily_targets(catalog)
+    log("REFAMILY: aktivních účtů v rodinách #{REFAMILY_FROM.join('/')}: #{targets.size} / #{catalog.size}")
+    log("Odhad ceny (plná klasifikace vč. postů, ~$0.0079/účet): " \
+        "~$#{format('%.2f', targets.size * 0.0079)} — nic nemění.")
     return
   end
 
@@ -488,6 +529,40 @@ def main
       end
     end
     log("  Přetypováno: #{rch}/#{targets.size}")
+  end
+
+  # 1c) Přeznačení rodiny (--refamily) — cílí na koš `lifestyle`. Plná klasifikace
+  # (lookup + posty + AI), takže se počítá jako nový účet; proto jen AKTIVNÍ účty
+  # v REFAMILY_FROM, ne celý katalog. Stejné checkpointy/upload jako u --retype.
+  if REFAMILY
+    if AICLIENT.instance_variable_get(:@api_key).to_s.empty?
+      abort("❌ Chybí ANTHROPIC_API_KEY (nutné pro --refamily)")
+    end
+    targets = refamily_targets(refreshed)
+    log("")
+    log("── Přeznačení rodiny (--refamily) z #{REFAMILY_FROM.join('/')}: #{targets.size} účtů ──")
+    fch = 0
+    last_up = 0
+    targets.each_with_index do |rec, i|
+      fam, tags = classify_family(rec)
+      if fam && fam != rec["family"]
+        log("  🏷  #{rec['id']}: #{rec['family']} → #{fam}")
+        rec["family"] = fam
+        rec["categories"] = tags if tags && tags.any?
+        fch += 1
+      end
+      sleep(AI_DELAY) if AI_DELAY.positive?
+
+      next unless FLUSH_EVERY.positive? && ((i + 1) % FLUSH_EVERY).zero?
+
+      write_json.call(CATALOG_PATH, refreshed)
+      log("  💾 checkpoint @#{i + 1}/#{targets.size}: rodin #{fch}")
+      if !NO_UPLOAD && UPLOAD_EVERY.positive? && (i + 1 - last_up) >= UPLOAD_EVERY
+        Surfer.upload(CATALOG_PATH, logger: method(:log))
+        last_up = i + 1
+      end
+    end
+    log("  Přeznačeno rodin: #{fch}/#{targets.size}")
   end
 
   # 2) Kategorizace nových (AI) — s průběžnými checkpointy (crash-safe, resumable)

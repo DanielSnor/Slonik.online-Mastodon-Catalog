@@ -5,6 +5,7 @@
 #   ./update.sh --dry-run            # jen diff + odhad ceny
 #   ./update.sh --no-categorize      # jen refresh (zdarma): aktivita, vyřazení botů
 #   ./update.sh --retype             # přeznač type u aktivních
+#   ./update.sh --refamily           # přeznač family u aktivních v koši „lifestyle"
 #   ./update.sh                      # plná aktualizace + upload
 #   ./update.sh --bg [args…]         # spustí na pozadí → logs/update.log (+ .pid)
 set -euo pipefail

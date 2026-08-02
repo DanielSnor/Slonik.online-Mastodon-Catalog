@@ -20,7 +20,8 @@
   --fam-culture: #a64dff;
   --fam-science_tech: #1d9c8e;
   --fam-lifestyle: #ff6f61;   /* coral — veselejší než původní amber */
-  --fam-business: #4f9e34;
+  --fam-business: #4f9e34;  /* zůstává kvůli badge „registrace otevřené“ */
+  --fam-local: #c98a12;     /* okr — regionální/lokální komunita */
   --fam-humor: #ec3d86;
   --fam-government: #6b7a8f;
 }
@@ -419,7 +420,7 @@ a { color: inherit; text-decoration: none; }
 .fam-culture.active { background: var(--fam-culture); }
 .fam-science_tech.active { background: var(--fam-science_tech); }
 .fam-lifestyle.active { background: var(--fam-lifestyle); }
-.fam-business.active { background: var(--fam-business); }
+.fam-local.active { background: var(--fam-local); }
 .fam-humor.active { background: var(--fam-humor); }
 .fam-government.active { background: var(--fam-government); }
 
@@ -507,7 +508,7 @@ a { color: inherit; text-decoration: none; }
 .label-family.fam-culture { background: var(--fam-culture); }
 .label-family.fam-science_tech { background: var(--fam-science_tech); }
 .label-family.fam-lifestyle { background: var(--fam-lifestyle); }
-.label-family.fam-business { background: var(--fam-business); }
+.label-family.fam-local { background: var(--fam-local); }
 .label-family.fam-humor { background: var(--fam-humor); }
 .label-family.fam-government { background: var(--fam-government); }
 
