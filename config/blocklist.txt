@@ -20,3 +20,5 @@
 # Příklad (odkomentuj a uprav):
 # spammer@nejakainstance.cz
 # nechcetubyt@witter.cz
+
+zdenekk@zpravobot.news   # žádost vlastníka o odstranění (vyřízeno 6/2026)

@@ -10,5 +10,7 @@
 # boty, výrazné osobnosti). Hloubka je 1 úroveň, boti se vyřadí, dedup automatický.
 
 zpravobot@zpravobot.news       followers
-danielsnor@mastodon.social     followers,following
+danielsnor@mastodon.social     followers
 medvidekpu@mastodon.social     followers
+igisho@rockosbasilisk.com      followers
+xChaos@f.cz                    followers
