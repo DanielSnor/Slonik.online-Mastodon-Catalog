@@ -123,7 +123,7 @@ Server je **git clone**. Deploy = `git pull` v kontejneru, žádný rsync.
 ./test.sh && git push
 
 # 2) na serveru (v kontejneru appky)
-slonik                      # alias: cd /app/data/slonik
+slonik                      # alias: cd /app/data/slonik.online
 git pull
 ```
 
@@ -590,7 +590,7 @@ katalog/kategorie se mění týdně, denně by jen zbytečně tlouklo API.
 Cron řádky proto NEobsahují `>> logs/… 2>&1`. Cron má holé prostředí → ruby musí být
 v PATH (v Cloudron cronu už je).
 
-**Na cronu běží jen PROD** (`PROJECT_DIR=/app/data/slonik`); test prostředí
+**Na cronu běží jen PROD** (`/app/data/slonik.online`); test prostředí
 neexistuje. Vývoj a zkoušení probíhá lokálně (`./serve.sh`, `--dry-run` u skriptů).
 
 ---

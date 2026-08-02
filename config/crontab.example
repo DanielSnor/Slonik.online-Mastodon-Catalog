@@ -8,7 +8,7 @@
 #
 # LOGOVÁNÍ: skripty si přesměrování řeší samy — když běží z cronu (bez terminálu),
 # zapisují do logs/<jméno>.log; spuštěné ručně píšou na obrazovku. Proto cron řádky
-# NEobsahují `>> logs/… 2>&1`. (Sledování:  tail -f /app/data/slonik/logs/update.log)
+# NEobsahují `>> logs/… 2>&1`. (Sledování:  tail -f /app/data/slonik.online/logs/update.log)
 #
 # ČASOVÁ ZÓNA — DŮLEŽITÉ:
 #   Cloudron cron běží v LOKÁLNÍM čase kontejneru (CET/CEST = UTC+1/+2), CRON_TZ
@@ -27,12 +27,12 @@
 # ───────────────────────── DENNĚ ─────────────────────────
 
 # Sběr postů — 02:15 lokálně (= těsně po UTC půlnoci) za PŘEDCHOZÍ uzavřený UTC den.
-15 2 * * *      /app/data/slonik/collect.sh --yesterday
+15 2 * * *      /app/data/slonik.online/collect.sh --yesterday
 
 # Index vyhledávání — každých 6 h. Přírůstkově: lokální timeline CZ/SK instancí +
 # feeds (boti) + katalogové účty na nedostupných instancích → search.json +
 # users.json + status.json, upload. (Plný rebuild ručně: ./build-search.sh --rebuild)
-0 2,8,14,20 * * *  /app/data/slonik/build-search.sh
+0 2,8,14,20 * * *  /app/data/slonik.online/build-search.sh
 
 # ────────────────── TÝDNĚ (pondělí) ─────────────
 # Jeden řádek = celý týdenní řetěz SEKVENČNĚ (weekly.sh):
@@ -41,4 +41,4 @@
 # Start v 03:15 = až po pondělním collectu (02:15), aby konsolidace měla i neděli.
 # Selhání jednoho kroku nezastaví zbytek. Stavové značky → logs/weekly.log,
 # detaily → logs/{consolidate,discover,update,instances,images,sri}.log.
-15 3 * * 1      /app/data/slonik/weekly.sh
+15 3 * * 1      /app/data/slonik.online/weekly.sh
