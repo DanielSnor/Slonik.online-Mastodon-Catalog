@@ -584,7 +584,9 @@
           <ul>
             <li><strong>Vyhledat</strong> — fulltext ve jméně i handle.</li>
             <li><strong>Oblast</strong> — tematické zařazení (Zprávy, Kultura, Sport,
-              Věda &amp; technika, Stát, Byznys, Humor, Životní styl).</li>
+              Věda &amp; technika, Stát, Region, Humor, Životní styl). <em>Region</em> jsou
+              účty o dění v konkrétním městě nebo kraji; <em>Životní styl</em> je zbytková
+              oblast pro účty, které se jinam nevešly.</li>
             <li><strong>Typ účtu</strong> — osoba, médium, organizace, tým, ostatní.</li>
             <li><strong>Jazyk</strong> — čeština, slovenština, angličtina.</li>
             <li><strong>Tag</strong> — jemnější štítky; začni psát a vyber z nabídky.
@@ -617,7 +619,9 @@
           <ul>
             <li><strong>Search</strong> — full text in name and handle.</li>
             <li><strong>Topic</strong> — thematic area (News, Culture, Sports,
-              Science &amp; tech, Government, Business, Humor, Lifestyle).</li>
+              Science &amp; tech, Government, Local, Humor, Lifestyle). <em>Local</em> covers
+              accounts about a particular town or region; <em>Lifestyle</em> is the catch-all
+              for accounts that fit nowhere else.</li>
             <li><strong>Account type</strong> — person, media, organization, team, other.</li>
             <li><strong>Language</strong> — Czech, Slovak, English.</li>
             <li><strong>Tag</strong> — finer labels; start typing and pick from the list.
@@ -762,7 +766,9 @@
           <h3>Nechci být v katalogu.</h3>
           <p>Jsi vlastník účtu a nechceš v Sloníkovi být? Napiš na
             <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>
-            a účet odstraníme.</p>
+            a účet odstraníme. Odstranění platí pro <strong>celého Sloníka</strong> — nejen
+            pro Účty, ale i pro Vyhledávání a žebříčky v Postech — a účet se už nevrátí ani
+            při dalším objevování.</p>
           <h3>Proč některé účty v záložce Účty nevidím?</h3>
           <p>V <strong>Účtech</strong> ukazujeme jen <strong>aktivní</strong> účty — s příspěvkem
             za posledních <strong><span class="js-active-days">90</span> dní</strong>. Účet, který delší dobu mlčí, se dočasně skryje
@@ -827,7 +833,9 @@
           <h3>I don't want to be in the catalog.</h3>
           <p>Are you the account owner and don't want to be in Sloník? Write to
             <a href="https://mastodon.social/@danielsnor" target="_blank" rel="noopener">@danielsnor@mastodon.social</a>
-            and we'll remove the account.</p>
+            and we'll remove the account. Removal covers <strong>all of Sloník</strong> — not
+            just Accounts but Search and the Posts charts too — and the account won't come back
+            on the next discovery run.</p>
           <h3>Why don't I see some accounts in the Accounts tab?</h3>
           <p>In <strong>Accounts</strong> we only show <strong>active</strong> accounts — those
             that posted within the last <strong><span class="js-active-days">90</span> days</strong>. An account that goes quiet is
@@ -887,6 +895,11 @@
             (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> na OSCLOUD),
             bez osobních údajů. Veškerá „chytrost" se odehrává předem v dávkových
             skriptech — web jen zobrazuje hotová data.</p>
+          <p>Jedna věc, o které je fér vědět: <strong>avatary a loga instancí</strong> se
+            načítají přímo z domovských serverů jejich majitelů, ne z našeho. Ty servery tak
+            uvidí IP adresu tvého prohlížeče. Neposíláme jim informaci o tom, kterou stránku
+            Sloníka si prohlížíš (<code>referrerPolicy: no-referrer</code>), ale samotnému
+            spojení se bez proxy zabránit nedá.</p>
           <h3>Sběr dat</h3>
           <p>Na samostatném serveru běží sada skriptů v jazyce <strong>Ruby</strong>, které
             pravidelně (cronem) sbírají data z <strong>veřejných rozhraní Mastodonu</strong> —
@@ -904,7 +917,8 @@
           <h3>Metriky a žebříčky</h3>
           <p>Metriky jsou záměrně jednoduché a počítané z veřejných čísel: <strong>engagement</strong>
             = boosty + oblíbení; <strong>Skokani</strong> porovnávají příspěvek s průměrným výkonem
-            jeho účtu (min. 3 posty). V záložce Účty navíc ukazujeme jen účty aktivní za posledních
+            jeho účtu (min. 3 posty). Čísla pro týdenní žebříčky se přeměřují najednou při
+            pondělním sestavení, ať nezáleží na tom, v kolik hodin příspěvek vyšel. V záložce Účty navíc ukazujeme jen účty aktivní za posledních
             <span class="js-active-days">90</span> dní. Žádné vážené skóre ani skrytá magie — vše jde dopočítat z dat, která zobrazujeme.</p>
           <h3>Provoz a publikace</h3>
           <p>Hotová data (katalog, žebříčky, vyhledávací index, přehled instancí) se nahrávají
@@ -926,6 +940,11 @@
             (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> on OSCLOUD),
             with no personal data. All the “smarts” happen beforehand in batch scripts — the site
             just displays ready-made data.</p>
+          <p>One thing worth knowing: <strong>avatars and instance logos</strong> load directly
+            from their owners' home servers, not from ours, so those servers see your browser's
+            IP address. We don't tell them which page of Sloník you're viewing
+            (<code>referrerPolicy: no-referrer</code>), but the connection itself can't be
+            avoided without proxying every image.</p>
           <h3>Data collection</h3>
           <p>A separate server runs a set of <strong>Ruby</strong> scripts that regularly (via
             cron) collect data from the <strong>public Mastodon APIs</strong> — the social
@@ -943,7 +962,9 @@
           <h3>Metrics and charts</h3>
           <p>Metrics are deliberately simple and computed from public numbers:
             <strong>engagement</strong> = boosts + favourites; <strong>risers</strong> compare a
-            post to its account's average performance (min. 3 posts). The Accounts tab additionally
+            post to its account's average performance (min. 3 posts). The numbers behind the
+            weekly charts are re-measured together when the charts are built on Monday, so the
+            time of day a post went out doesn't decide its place. The Accounts tab additionally
             shows only accounts active in the last <span class="js-active-days">90</span> days. No weighted scores or hidden magic —
             everything can be derived from the data we display.</p>
           <h3>Operation and publishing</h3>

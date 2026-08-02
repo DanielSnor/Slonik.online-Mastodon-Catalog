@@ -21,7 +21,7 @@
 #   INPUT_JSONL   explicitní cesta k JSONL (přebije WEEK_OVERRIDE)
 #   RESCORE=0     vypne přeměření engagementu (viz níže); default zapnuto
 #   RESCORE_LIMIT max. počet přeměřených postů (0 = všechny; default 0)
-#   SURFER_URL    base URL Surferu (např. https://katalog-test.zpravobot.news)
+#   SURFER_URL    base URL Surferu (např. https://slonik.online)
 #   SURFER_TOKEN  Surfer access_token (Files API)
 #   SURFER_REMOTE_DIR  cílová podsložka na Surferu (default "" = root; např. "slonik-test")
 #   KEEP_JSONL=1  nemazat JSONL po konsolidaci
@@ -62,7 +62,7 @@ OUTPUT_DIR  = ENV["OUTPUT_DIR"] || Paths::DATA_DIR  # kde leží týdenní JSONL
 SECTION_MAX = 50           # max postů na sekci (frontend bere Top 10 / Top 50)
 RISER_MIN_POSTS = 3        # min. počet postů účtu pro výpočet skokanů
 RISER_RATIO_MIN_ENG = 5    # min. engagement pro poměrovou metriku skokanů
-USER_AGENT  = "mastokatalog-consolidate/1.0 (+https://katalog-test.zpravobot.news)"
+USER_AGENT  = "mastokatalog-consolidate/1.0 (+https://slonik.online)"
 
 def log(msg)
   puts "#{Time.now.utc.strftime('%H:%M:%S')} #{msg}"

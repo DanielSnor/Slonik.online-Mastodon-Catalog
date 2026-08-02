@@ -24,7 +24,7 @@ require "time"
 require "openssl"
 
 class MastodonAPI
-  USER_AGENT = "mastokatalog/1.0 (+https://katalog-test.zpravobot.news; research)"
+  USER_AGENT = "mastokatalog/1.0 (+https://slonik.online; research)"
 
   # Po tolika selháních SPOJENÍ na daný host ho v rámci běhu přestaneme dotazovat
   # (mrtvé/zaniklé instance jako mastodon.arch-linux.cz jinak každý lookup blokují

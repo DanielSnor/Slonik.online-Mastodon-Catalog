@@ -50,7 +50,7 @@ MAX_PAGES_PER_ACCOUNT = (ENV["MAX_PAGES_PER_ACCOUNT"] || "25").to_i
 # Měřeno na 1192 objevených účtech: top dle followers drží 99,9 % veškerého
 # dosahu; ~644 účtů má 20+ followers, ~548 jich má méně (z toho 131 nula).
 MIN_FOLLOWERS  = (ENV["MIN_FOLLOWERS"] || "20").to_i
-USER_AGENT     = "mastokatalog-collect/1.0 (+https://katalog-test.zpravobot.news; research)"
+USER_AGENT     = "mastokatalog-collect/1.0 (+https://slonik.online; research)"
 # „Obsahové" instance (boti/zprávy) — sbíráme z jejich LOKÁLNÍ timeline (vč. botů),
 # mimo katalog. Posty z nich projdou stejnými žebříčky jako katalogové.
 FEEDS          = CatalogConfig.read_list("feeds.txt", env_key: "FEEDS_FILE")

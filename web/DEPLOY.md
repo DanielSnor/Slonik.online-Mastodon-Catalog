@@ -1,62 +1,67 @@
-# Nasazení makety na `katalog-test.zpravobot.news`
+# Publikace webu na Surfer
 
-PoC maketa je hotová ve složce `web/`. Nasazení se dělá přes **Surfer
-Files API** (Cloudron). `posts.json`/`data.json` uploadují skripty samy
-(`Surfer.upload` v `lib/config.rb`); statické assety níže lze nahrát ručně.
+Web je statický a nahrává se přes **Surfer Files API** (Cloudron), stejnou cestou
+jako datové soubory: `POST /api/files/<name>?access_token=…&newFilePath=<name>`
+(multipart, pole `file`, úspěch HTTP 201). Sdílená implementace je `Surfer.upload`
+v `lib/config.rb`.
 
-## Obsah k nahrání
+Podrobný deploy řetězec (Mac → server → Surfer) je v kořenovém `README.md`,
+sekce „Nasazení na server". Tenhle soubor popisuje jen poslední krok.
 
-Nahraj **obsah složky `web/`** do rootu Surfer instance:
+## Co se nahrává
 
-```
-index.html      # upravený název → "Fediverse katalog CZ/SK"
-app.js          # produkční + 2 řádky i18n (brand_prefix, title_doc, claim)
-app.css         # beze změny (identický s produkcí)
-data.json       # 50 CZ/SK lidí + 25 botů, s polem `bot`
-header.jpg      # beze změny (placeholder = produkční header)
-```
+| Skupina | Soubory | Kdo je publikuje |
+|---|---|---|
+| Frontend | `index.html`, `app.js`, `app.css`, `links.js`, obrázky | ručně `./deploy-web.sh --assets` |
+| Katalog | `data.json`, `status.json` | `update_catalog.rb` sám |
+| Žebříčky | `posts.json`, `weekly.json` | `consolidate_posts.rb` sám |
+| Vyhledávání | `search.json`, `users.json` | `build_search.rb` sám |
+| Instance | `instances.json` | `build_instances.rb` sám |
 
-> `DEPLOY.md` a `avatars/` (prázdná) nahrávat netřeba.
+Datové soubory tedy ručně nahrávat netřeba — dávkové skripty je publikují samy po
+každém běhu. `./deploy-web.sh --assets` použiješ po změně frontendu,
+`./deploy-web.sh` nahraje celý bundle.
 
-## Upload přes Surfer Files API (příklad)
+> `web/data.json` je **publikovaná** verze katalogu (jen pole, která frontend
+> vykresluje). Plné záznamy jsou v `data/catalog.json` a na web nepatří —
+> viz README, sekce „Katalog: úložiště vs. web".
 
-Surfer **nepoužívá WebDAV**. Upload je `POST /api/files/<name>?access_token=…&newFilePath=<name>`
-(multipart, pole `file`, úspěch HTTP 201). Doplň URL a access_token:
+## Ruční upload (když je potřeba obejít skripty)
 
 ```bash
 cd web
-BASE="https://katalog-test.zpravobot.news"
+BASE="https://slonik.online"
 TOKEN="..."   # Surfer access_token (Settings → Access tokens)
 
-for f in index.html app.js app.css data.json header.jpg; do
+for f in index.html app.js app.css links.js; do
   curl -sf -X POST -F "file=@$f" \
     "$BASE/api/files/$f?access_token=$TOKEN&newFilePath=$f" \
     && echo "uploaded $f"
 done
 ```
 
-(Stejné credentials jako `SURFER_URL`/`SURFER_TOKEN` v `config.env`. Datové soubory
-`data.json`/`posts.json` ale typicky nahrávají skripty samy.)
+Stejné credentials jako `SURFER_URL`/`SURFER_TOKEN` v `config.env`.
 
 ## Po nahrání ověř
 
-- [ ] `https://katalog-test.zpravobot.news/` se načte
-- [ ] Titulek je „Fediverse katalog CZ/SK"
-- [ ] Zobrazuje se 75 zdrojů (50 lidí + 25 botů)
-- [ ] Avatary se načítají (přímé URL z Mastodon CDN — vyžaduje, aby je
-      prohlížeč návštěvníka stáhl z `witter.cz`/`mastodonczech.cz`/`mamutovo.cz`)
-- [ ] Filtry / hledání / řazení fungují
+- [ ] `https://slonik.online/` se načte a v patičce sedí datum aktualizace katalogu
+- [ ] Účty: počet odpovídá aktivním účtům (ne celému katalogu)
+- [ ] Filtry oblastí obsahují **Region**, ne „Byznys"
+- [ ] Vyhledávání najde výsledky (stahuje `search.json`, řádově MB)
+- [ ] Posty ukazují poslední uzavřený týden
+- [ ] Konzole prohlížeče je bez chyb — hlavně bez porušení CSP
 
 ## Pozn. k avatarům
 
-`data.json` používá **přímé URL** na Mastodon CDN jednotlivých instancí
-(dle dohody). Výhoda: žádné soubory k nahrání. Nevýhoda: pokud instance avatar
-smaže/přesune, app.js spadne na `avatar-fallback` (iniciála na barevném pozadí) —
-to je očekávané a graceful.
+`data.json` používá **přímé URL** na avatary jednotlivých instancí. Výhoda: žádné
+soubory k nahrání. Nevýhoda: když instance avatar smaže nebo přesune, frontend
+spadne na `avatar-fallback` (iniciála na barevném pozadí) — to je očekávané.
+Obrázky se načítají s `referrerPolicy="no-referrer"`, takže cizí servery nevidí,
+kterou stránku Sloníka si návštěvník prohlíží.
 
 ## Lokální náhled (bez nasazení)
 
 ```bash
-ruby bin/serve.rb 8765 web
+./serve.sh 8765
 # → http://127.0.0.1:8765/
 ```

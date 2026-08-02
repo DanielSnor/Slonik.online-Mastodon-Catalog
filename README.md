@@ -2,9 +2,10 @@
 
 Katalog českých a slovenských uživatelů Mastodonu + týdenní žebříčky postů.
 Data se sbírají přes **veřejné Mastodon API**, kategorizují přes **Claude API** a
-publikují jako statický web na **Surfer** (Cloudron) — `katalog-test.zpravobot.news`.
+publikují jako statický web na **Surfer** (Cloudron) — `slonik.online`.
 
-Vzniklo jako PoC průzkum (5 fází); historické artefakty jsou v `archiv/`.
+Vzniklo jako PoC průzkum (5 fází). Historické artefakty (`poc_report.md`,
+`poc_results.json`) jsou mimo repozitář, jen na serveru a lokálně.
 
 ## Stack
 
@@ -17,7 +18,7 @@ Vzniklo jako PoC průzkum (5 fází); historické artefakty jsou v `archiv/`.
 bin/                    spustitelné skripty (entry points)
   run_tests.rb            spouštěč testů (každý soubor ve vlastním procesu)
   discover_accounts.rb    objevování účtů ze sociálního grafu + directory
-  update_catalog.rb       inkrementální aktualizace web/data.json (AI jen pro nové)
+  update_catalog.rb       inkrementální aktualizace katalogu (AI jen pro nové)
   collect_posts.rb        denní sběr postů → data/posts_YYYY_Www.jsonl
   consolidate_posts.rb    týdenní konsolidace → web/posts.json → upload na Surfer
   build_search.rb         přírůstkový index pro vyhledávání → web/search.json + users.json
@@ -63,7 +64,6 @@ docs/                   dokumentace (ai_report.md…)
 logs/                   logy běhů
 scripts/                deploy: sync_local_to_test.sh, sync_test_to_prod.sh,
                         sync_data_to_test.sh + migrate_layout.sh (převod layoutu)
-archiv/                 historické PoC artefakty
 config.env.example      šablona konfigurace; reálný config.env (kořen) je v .gitignore
 ```
 
@@ -180,7 +180,7 @@ chmod 600 config.env
 
 | Klíč | Význam |
 |---|---|
-| `SURFER_URL` | base URL Surferu (např. `https://katalog-test.zpravobot.news`) |
+| `SURFER_URL` | base URL Surferu (např. `https://slonik.online`) |
 | `SURFER_TOKEN` | Surfer access_token (Files API) |
 | `SURFER_REMOTE_DIR` | cílová podsložka na Surferu (prázdné = root) |
 | `MASTODON_TOKEN` | read-only bearer token (volitelný; lepší rate limity) |
@@ -574,4 +574,4 @@ Nasazení: viz `web/DEPLOY.md` (upload na Surfer přes Files API).
 - **Slovensko:** jediná ověřeně živá ryze SK instance je `mastodon.sk`; ostatní SK
   účty žijí na CZ/velkých instancích a dolují se heuristikou jazyka (`dominant_language == "sk"`).
 - **Mrtvé instance:** `mastodon.cz` (zaparkovaná doména / rozbitý TLS) — vyřazena.
-- Historické reporty a data: `archiv/` (`poc_report.md`, `ai_report.md`, `poc_results.json`).
+- Historické reporty a data: složka `archiv/` mimo repozitář (`poc_report.md`, `poc_results.json`).

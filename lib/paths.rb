@@ -13,7 +13,6 @@ module Paths
   WEB_DIR    = File.join(ROOT, "web")
   DOCS_DIR   = File.join(ROOT, "docs")
   LOGS_DIR   = File.join(ROOT, "logs")
-  ARCHIV_DIR = File.join(ROOT, "archiv")
   CONFIG_ENV = File.join(ROOT, "config.env") # tajemství; mimo git, jen na serveru
 
   # Katalog má dvě podoby a je důležité je neplést:
