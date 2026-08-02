@@ -380,7 +380,10 @@ Buduje dva soubory pro **vyhledávání v prohlížeči** (deterministické, bez
 Zdroje: (1) **lokální veřejné timeline** CZ/SK instancí (`config/instances.txt`),
 (2) **katalogové účty** (`web/data.json`) — ale jen ty na instancích, které timeline
 **nepokryje**: neskrapované (mimo `instances.txt`) nebo skrapované s **nedostupnou**
-timeline. Tím denní běh nepolluje všech ~2500 účtů jednotlivě.
+timeline. Tím denní běh nepolluje všech ~2500 účtů jednotlivě. Z nich se navíc
+**mlčící účty** (bez příspěvku déle než `ACTIVE_DAYS`) dotazují jen jednou za
+`SEARCH_POLL_INACTIVE_DAYS` (default 7), ne 4× denně — stav si drží
+`search_state.json` pod klíčem `poll:<handle>`.
 (3) **„obsahové" instance** (`config/feeds.txt` — boti/zprávy, např. `zpravobot.news`):
 indexují se do vyhledávání vč. botů, ale s **kratší retencí** `FEEDS_RETENTION_DAYS`
 (default 7 dní), aby velký objem nenafoukl `search.json`.

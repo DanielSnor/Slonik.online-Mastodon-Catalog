@@ -29,6 +29,7 @@
 
 require "json"
 require "time"
+require "date"
 require "set"
 require_relative "../lib/config"
 require_relative "../lib/mastodon_api"
@@ -85,6 +86,33 @@ def blocked?(acct)
 end
 
 STATS = Hash.new(0)
+
+# Kadence individuálního pollingu katalogových účtů (ty na neskrapovaných
+# instancích, které lokální timeline nepokryje). Aktivní účet dotazujeme každý
+# běh, mlčící jednou za SEARCH_POLL_INACTIVE_DAYS — dvě třetiny tohohle seznamu
+# tvoří účty bez příspěvku přes 90 dní, u kterých 4 dotazy denně nic nepřinesou.
+# Nepolníme je NIKDY — jen zřídka, ať se návrat k psaní pozná.
+ACTIVE_DAYS               = (ENV["ACTIVE_DAYS"] || "90").to_i
+SEARCH_POLL_INACTIVE_DAYS = (ENV["SEARCH_POLL_INACTIVE_DAYS"] || "7").to_i
+
+def days_since(iso)
+  return nil if iso.to_s.empty?
+
+  (Date.today - Date.parse(iso.to_s)).to_i
+rescue ArgumentError
+  nil
+end
+
+# Má se katalogový účet v tomhle běhu pollovat individuálně?
+def due_poll?(rec)
+  d = days_since(rec["last_status_at"])
+  return true if d && d <= ACTIVE_DAYS
+
+  last = STATE["poll:#{rec['id']}"]
+  return true if last.nil?
+
+  (days_since(last) || SEARCH_POLL_INACTIVE_DAYS) >= SEARCH_POLL_INACTIVE_DAYS
+end
 
 # Přírůstkový stav: zdroj (tl:<host> / acct:<id>) => poslední viděné status id.
 STATE = if REBUILD || !File.exist?(STATE_PATH)
@@ -311,11 +339,13 @@ def main
   unless NO_CATALOG
     # Katalogové účty pollujeme individuálně jen tam, kde je timeline nepokryje:
     # na NEscrapovaných instancích, nebo na scrapovaných s nedostupnou timeline.
-    todo = cat.values.select do |c|
+    uncovered = cat.values.select do |c|
       inst = c["id"].split("@", 2).last
       !scraped.include?(inst) || failed.include?(inst)
     end
-    log("── Katalogové účty individuálně: #{todo.size} (mimo dostupné lokály) ──")
+    todo = uncovered.select { |c| due_poll?(c) }
+    log("── Katalogové účty individuálně: #{todo.size} z #{uncovered.size} (mimo dostupné lokály; " \
+        "mlčící á #{SEARCH_POLL_INACTIVE_DAYS} dní) ──")
     before = seen.size
     todo.each_with_index do |c, i|
       username, instance = c["id"].split("@", 2)
@@ -323,9 +353,13 @@ def main
       next unless mid
 
       paginate(instance, "/api/v1/accounts/#{mid}/statuses?limit=40&exclude_reblogs=true", seen, "acct:#{c['id']}")
+      NEW_STATE["poll:#{c['id']}"] = Date.today.to_s
       log("  …#{i + 1}/#{todo.size}") if ((i + 1) % 50).zero?
     end
     log("  Po katalogu: +#{seen.size - before} postů")
+
+    # Prořež stav pollingu u účtů, které už v katalogu nejsou (jinak by rostl donekonečna).
+    NEW_STATE.delete_if { |k, _| k.start_with?("poll:") && !cat.key?(k.delete_prefix("poll:")) }
   end
 
   # Propsání katalogových facetů na posty (oblast/tagy) — odlišovač vs. Mastodon.
