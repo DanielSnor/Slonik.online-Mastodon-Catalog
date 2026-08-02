@@ -38,6 +38,10 @@ MASTODON_DELAY = (ENV["MASTODON_DELAY"] || "1.0").to_f
 DATA_JSON_PATH = ENV["DATA_JSON_PATH"] || File.join(Paths::WEB_DIR, "data.json")
 OUTPUT_DIR     = ENV["OUTPUT_DIR"] || Paths::DATA_DIR
 STATUSES_LIMIT = 40
+# Strop stránkování na účet a den (40 postů/stránka). 25 stránek = 1000 postů,
+# což žádný lidský ani boti účet za den nepřekročí — je to pojistka proti
+# zacyklení, ne provozní limit.
+MAX_PAGES_PER_ACCOUNT = (ENV["MAX_PAGES_PER_ACCOUNT"] || "25").to_i
 # Sbírej posty jen z účtů s aspoň tolika followery. Engagementové žebříčky
 # (boosty/favy) vyžadují publikum — účty bez sledujících do nich nepřispějí,
 # takže je zbytečné je každý den dotazovat. 0 = bez prahu (všechny účty).
@@ -141,15 +145,52 @@ def lookup_account_id(instance, username)
 end
 
 # Stáhne statusy účtu a vyfiltruje ty z cílového dne (UTC).
-# #2: pokud známe min_id (poslední post z minulého běhu), stáhneme jen NOVĚJŠÍ
-# posty místo vždy posledních 40 a filtrování.
+#
+# Stránkuje: jedna stránka je `limit` postů, takže bez stránkování by účet s víc
+# než 40 posty za den o zbytek přišel — a s min_id nenávratně, protože Mastodon
+# nad hranicí vrací NEJSTARŠÍ posty, stav by se posunul za ně a novější by pak
+# spadly mimo denní okno.
+#   • známe min_id (poslední post minulého běhu) → jdeme vzhůru, kurzor je vždy
+#     nejvyšší viděné id; končíme, jakmile je celá stránka za cílovým dnem,
+#   • bez min_id (první běh účtu) → klasicky zpět přes max_id, dokud nespadneme
+#     pod začátek dne.
 def fetch_day_statuses(instance, account_id, min_id = nil)
-  arr = API.statuses(instance, account_id, limit: STATUSES_LIMIT, min_id: min_id)
-  return [] if arr.empty?
+  out = []
+  pages = 0
+  cursor = min_id
 
-  # Filtr na cílový den platí pořád: min_id ořízne staré, den ořízne i případné
-  # zítřejší/budoucí (běh kolem půlnoci) a posty starší než DAY_START bez min_id.
-  arr.select do |s|
+  loop do
+    arr = if min_id
+            API.statuses(instance, account_id, limit: STATUSES_LIMIT, min_id: cursor)
+          else
+            API.statuses(instance, account_id, limit: STATUSES_LIMIT, max_id: cursor)
+          end
+    break if arr.empty?
+
+    out.concat(arr)
+    pages += 1
+    break if arr.size < STATUSES_LIMIT || pages >= MAX_PAGES_PER_ACCOUNT
+
+    times = arr.filter_map { |s| Time.parse(s["created_at"]) rescue nil }
+    if min_id
+      break if times.any? && times.min >= DAY_END   # celá stránka už je za cílovým dnem
+
+      nxt = arr.map { |s| s["id"] }.max_by(&:to_i)
+    else
+      break if times.any? && times.min < DAY_START  # došli jsme pod začátek dne
+
+      nxt = arr.map { |s| s["id"] }.min_by(&:to_i)
+    end
+    break if nxt.nil? || nxt == cursor              # pojistka proti zacyklení
+
+    cursor = nxt
+  end
+
+  log("  ⚠️  @#{account_id}@#{instance}: strop #{MAX_PAGES_PER_ACCOUNT} stránek") if pages >= MAX_PAGES_PER_ACCOUNT
+
+  # Filtr na cílový den platí pořád: ořízne posty za hranicí dne v obou směrech
+  # (běh kolem půlnoci, stránka přesahující do včerejška).
+  out.select do |s|
     t = (Time.parse(s["created_at"]) rescue nil)
     t && t >= DAY_START && t < DAY_END
   end

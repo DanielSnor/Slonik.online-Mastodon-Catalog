@@ -100,11 +100,19 @@ class MastodonAPI
     get_json(host, "/api/v1/accounts/lookup?acct=#{URI.encode_www_form_component(username)}")
   end
 
-  # Stáhne statusy účtu. exclude_replies/reblogs a min_id konfigurovatelné.
-  def statuses(host, account_id, limit: 40, exclude_replies: false, exclude_reblogs: true, min_id: nil)
+  # Stáhne statusy účtu. exclude_replies/reblogs a stránkování konfigurovatelné.
+  #
+  # POZOR na sémantiku stránkování (liší se a snadno se splete):
+  #   max_id → posty STARŠÍ než id, od nejnovějšího dolů (běžné listování zpět),
+  #   min_id → posty NOVĚJŠÍ než id, ale Mastodon vrací NEJSTARŠÍ z nich (řadí
+  #            vzestupně a ořízne na limit). Kdo tedy s min_id nestránkuje, dostane
+  #            jen prvních `limit` postů nad hranicí — ne ty nejnovější.
+  def statuses(host, account_id, limit: 40, exclude_replies: false, exclude_reblogs: true,
+               min_id: nil, max_id: nil)
     q = "limit=#{limit}&exclude_reblogs=#{exclude_reblogs}"
     q += "&exclude_replies=true" if exclude_replies
     q += "&min_id=#{min_id}" if min_id
+    q += "&max_id=#{max_id}" if max_id
     arr = get_json(host, "/api/v1/accounts/#{account_id}/statuses?#{q}")
     arr.is_a?(Array) ? arr : []
   end
