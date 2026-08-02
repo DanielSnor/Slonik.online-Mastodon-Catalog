@@ -49,8 +49,14 @@ class MastodonAPI
     @dead_hosts = Hash.new(0) # host => počet selhání spojení (per běh)
   end
 
+  # Kolikrát opakovat po HTTP 429 a jak dlouho maximálně čekat na jeden pokus.
+  # Bez stropu instance, která vrací 429 trvale (nebo pošle absurdní Retry-After),
+  # zastaví celý běh — a cron ho zopakuje až za den.
+  RATE_LIMIT_RETRIES = 3
+  MAX_RETRY_AFTER    = 300
+
   # Vrátí [http_code, parsed_json_or_nil, link_header]. Nehází výjimky.
-  def get(host, path)
+  def get(host, path, attempt: 1)
     host = HOST_ALIASES[host] || host                            # WEB_DOMAIN split → funkční API host
     return [0, nil, nil] if @dead_hosts[host] >= DEAD_HOST_LIMIT # nedostupný host → přeskoč
     respect_rate_limit(host)
@@ -71,11 +77,17 @@ class MastodonAPI
 
     code = resp.code.to_i
     if code == 429
+      if attempt > RATE_LIMIT_RETRIES
+        @log.call("  ⚠️  429 #{host}: vyčerpáno #{RATE_LIMIT_RETRIES} pokusů, přeskakuji #{path}")
+        return [code, nil, nil]
+      end
+
       retry_after = resp["retry-after"].to_i
       retry_after = 30 if retry_after <= 0
-      @log.call("  ⚠️  429 #{host}, čekám #{retry_after}s a opakuji")
+      retry_after = MAX_RETRY_AFTER if retry_after > MAX_RETRY_AFTER
+      @log.call("  ⚠️  429 #{host}, čekám #{retry_after}s a opakuji (#{attempt}/#{RATE_LIMIT_RETRIES})")
       sleep(retry_after)
-      return get(host, path)
+      return get(host, path, attempt: attempt + 1)
     end
 
     sleep(@delay) if @delay.positive?
