@@ -272,7 +272,16 @@ def build_post(status, acct)
   }
 end
 
-# Existující id v JSONL (deduplication napříč restarty cronu).
+# Klíč pro deduplikaci. Mastodon status id je sekvence LOKÁLNÍ pro instanci
+# (snowflake z časového razítka), takže dvě různé instance mohou vydat stejné id
+# — dedup podle holého id by pak tiše zahodil cizí post. Klíčem je proto
+# instance + id, stejně jako to dělá build_search (`#{instance}:#{status_id}`).
+# V JSONL zůstává `id` syrové, žebříčky ho posílají do /api/v1/statuses/:id.
+def post_key(post)
+  "#{post['account_instance']}:#{post['id']}"
+end
+
+# Existující posty v JSONL (deduplication napříč restarty cronu).
 def existing_ids(path)
   set = {}
   return set unless File.exist?(path)
@@ -282,7 +291,7 @@ def existing_ids(path)
     next if line.empty?
 
     begin
-      set[JSON.parse(line)["id"]] = true
+      set[post_key(JSON.parse(line))] = true
     rescue JSON::ParserError
       next
     end
@@ -362,11 +371,11 @@ def main
       max_seen_id = s["id"] if max_seen_id.nil? || s["id"].to_i > max_seen_id.to_i
 
       post = build_post(s, acct)
-      if seen[post["id"]]
+      if seen[post_key(post)]
         total_dupe += 1
         next
       end
-      seen[post["id"]] = true
+      seen[post_key(post)] = true
       new_here += 1
       total_new += 1
       file&.puts(JSON.generate(post))
@@ -388,11 +397,11 @@ def main
       next if blocked?("#{fa[:username]}@#{fa[:instance]}")
 
       post = build_post(s, fa)
-      if seen[post["id"]]
+      if seen[post_key(post)]
         total_dupe += 1
         next
       end
-      seen[post["id"]] = true
+      seen[post_key(post)] = true
       total_new += 1
       fnew += 1
       file&.puts(JSON.generate(post))
