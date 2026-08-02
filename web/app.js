@@ -1338,7 +1338,7 @@
     avatarLink.target = '_blank';
     avatarLink.rel = 'noopener';
     avatarLink.title = t('profile_title');
-    avatarLink.appendChild(buildAvatar({ avatar: p.account_avatar }, 'card-avatar'));
+    avatarLink.appendChild(buildAvatar(avatarRecordFor(p), 'card-avatar'));
     head.appendChild(avatarLink);
 
     var hbody = document.createElement('div');
@@ -2144,7 +2144,7 @@
   function buildAvatar(rec, cls) {
     var avatar = document.createElement('div');
     avatar.className = cls;
-    var avatarUrl = safeUrl(rec.avatar);
+    var avatarUrl = avatarUrlFor(rec);
     if (avatarUrl) {
       var img = document.createElement('img');
       img.src = avatarUrl;
@@ -2625,6 +2625,30 @@
   // kontrolu dělá (walkPostNodes), přímá přiřazení ji obcházela.
   function safeUrl(u) {
     return /^https?:\/\//i.test(String(u == null ? '' : u)) ? String(u) : '';
+  }
+
+  // Lokální (zmenšená) kopie avataru, kterou publikuje cache_avatars.rb. Tvar je
+  // vždycky `avatars/<hex>.webp` — schválně úzký vzor, ať se sem nedá propašovat
+  // relativní cesta odjinud. Když kopie není, volající sáhne po vzdálené adrese.
+  function localAvatar(u) {
+    return /^avatars\/[a-f0-9]{8,}\.webp$/.test(String(u == null ? '' : u)) ? String(u) : '';
+  }
+
+  // Adresa avataru k zobrazení: nejdřív naše kopie, pak vzdálený originál.
+  function avatarUrlFor(rec) {
+    return rec ? (localAvatar(rec.avatar_local) || safeUrl(rec.avatar)) : '';
+  }
+
+  // Karta postu nese jen adresu avataru, jak vypadala při sběru. Přednost proto
+  // dáme záznamu z katalogu — ten má lokální kopii. Účet mimo katalog (autor
+  // z timeline) zůstane na vzdálené adrese; users.json u katalogových účtů už
+  // lokální cestu nese, takže ji poznáme i bez katalogu.
+  function avatarRecordFor(p) {
+    var acct = p.account_acct || (p.account_username + '@' + p.account_instance);
+    var c = catalogById[acct];
+    if (c) return c;
+    return localAvatar(p.account_avatar) ? { avatar_local: p.account_avatar }
+                                         : { avatar: p.account_avatar };
   }
 
   // Nastaví href jen u použitelné adresy; jinak href vůbec nevznikne (prvek

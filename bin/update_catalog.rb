@@ -41,6 +41,7 @@ require "time"
 require_relative "../lib/config"        # config.env do ENV + Surfer.upload
 require_relative "../lib/mastodon_api"
 require_relative "../lib/ai"
+require_relative "../lib/catalog"
 
 DRY_RUN         = ARGV.include?("--dry-run")
 NO_CATEGORIZE   = ARGV.include?("--no-categorize")
@@ -58,14 +59,8 @@ REFAMILY_FROM   = (ENV["REFAMILY_FROM"] || "lifestyle").split(",").map(&:strip).
 # která frontend vykresluje). Viz Paths.
 CATALOG_PATH    = ENV["CATALOG_PATH"] || Paths::CATALOG_STORE
 PUBLIC_PATH     = ENV["PUBLIC_CATALOG_PATH"] || Paths::CATALOG_PUBLIC
-# Pole, která jdou na web. Cokoli mimo tenhle seznam zůstává jen v úložišti —
-# interní klíče (mastodon_id, stav ověření) i _ai_description, což jsou strojově
-# psané charakteristiky konkrétních lidí, které web nikde nezobrazuje.
-PUBLIC_KEYS = %w[
-  id display_name type family language categories avatar bio followers posts_week
-  created_at last_status_at profile_url source_platforms bot
-  followers_delta activity_delta
-].freeze
+# Seznam publikovaných polí drží lib/catalog.rb — sdílí ho i cache_avatars.rb.
+PUBLIC_KEYS = Catalog::PUBLIC_KEYS
 STATUS_PATH     = ENV["STATUS_PATH"] || File.join(Paths::WEB_DIR, "status.json")
 CANDIDATES_PATH = ENV["CANDIDATES_PATH"] || File.join(Paths::DATA_DIR, "discovered_accounts.json")
 SKIPPED_PATH    = ENV["SKIPPED_PATH"] || File.join(Paths::DATA_DIR, "skipped_noncz.json")
@@ -570,20 +565,11 @@ def main
     File.rename(tmp, path)
   end
 
-  # Zápis publikované verze: jen veřejná pole, kompaktní JSON (pretty print přidá
-  # ~700 kB, které si stáhne každý návštěvník). Volá se všude tam, kde se zapisuje
-  # úložiště, ať jsou průběžné uploady konzistentní.
-  publish = lambda do |data|
-    slim = data.map { |rec| rec.select { |k, _| PUBLIC_KEYS.include?(k) } }
-    tmp = "#{PUBLIC_PATH}.tmp"
-    File.write(tmp, JSON.generate(slim))
-    File.rename(tmp, PUBLIC_PATH)
-  end
-
-  # Zapiš úložiště i publikovanou verzi najednou (checkpointy i finální zápis).
+  # Zapiš úložiště i publikovanou verzi najednou (checkpointy i finální zápis),
+  # ať jsou průběžné uploady konzistentní. Slim payload řeší Catalog.publish.
   save_both = lambda do |data|
     write_json.call(CATALOG_PATH, data)
-    publish.call(data)
+    Catalog.publish(data, PUBLIC_PATH)
   end
 
   # 1b) Přetypování aktivních (--retype) — type-only AI (bio+jméno), levné. Mutuje

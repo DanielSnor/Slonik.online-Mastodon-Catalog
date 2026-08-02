@@ -8,14 +8,15 @@
 # závislé — discover/update jedou i ze staršího vstupu).
 #
 # Pořadí je důležité: consolidate (po pondělním collectu) → discover (kandidáti)
-# → update (katalog z kandidátů) → refresh-instances (přehled/Oblast z katalogu).
+# → update (katalog z kandidátů) → cache-avatars (potřebuje hotový katalog)
+# → refresh-instances (přehled/Oblast z katalogu).
 set -uo pipefail
 cd "$(dirname "$0")"
 mkdir -p logs
 [ -t 1 ] || exec >> "logs/weekly.log" 2>&1
 
 echo "════════ týdenní běh start $(date -u '+%F %T UTC') ════════"
-for step in consolidate discover update refresh-instances; do
+for step in consolidate discover update cache-avatars refresh-instances; do
   echo "── $step ──"
   if "./$step.sh"; then
     echo "✅ $step hotovo"

@@ -22,6 +22,7 @@ bin/                    spustitelné skripty (entry points)
   collect_posts.rb        denní sběr postů → data/posts_YYYY_Www.jsonl
   consolidate_posts.rb    týdenní konsolidace → web/posts.json → upload na Surfer
   build_search.rb         přírůstkový index pro vyhledávání → web/search.json + users.json
+  cache_avatars.rb        zmenšené kopie avatarů → web/avatars/ (soukromí + přenos)
   build_instances.rb      přehled instancí (v2/v1 /instance) → web/instances.json
   classify_instances.rb   zaměření instancí (joinmastodon + AI) → data/instance_topics.json
   deploy_web.rb           nahraje web bundle (web/) na Surfer (Files API)
@@ -57,6 +58,7 @@ data/                   data (vstupy/výstupy/stav; generované jsou v .gitignor
 web/                    nasaditelný web (index.html, app.js, app.css, header.jpg,
                         links.js = kurátorovaný rozcestník (tab Odkazy),
                         data.json = PUBLIKOVANÝ katalog (jen zobrazovaná pole),
+                        avatars/ = zmenšené kopie avatarů (112px WebP),
                         posts.json, DEPLOY.md; search.json + users.json = vyhledávání,
                         instances.json = tab Instance)
 test/                   testy čistých funkcí (minitest ze stdlib, žádné gemy)
@@ -85,6 +87,7 @@ Tenké wrappery — samy přejdou do kořene projektu a `update.sh` načte
 | `./consolidate.sh` | týdenní konsolidace postů |
 | `./build-search.sh [--rebuild]` | index pro vyhledávání → `search.json` + `users.json` (přírůstkově; `--rebuild` = plný) |
 | `./build-search.sh --bg [flagy]` | totéž na pozadí → `logs/search.log` (+ `logs/search.pid`) |
+| `./cache-avatars.sh [--dry-run\|--rebuild]` | zmenšené kopie avatarů → `web/avatars/` |
 | `./build-instances.sh` | přehled instancí → `instances.json` |
 | `./classify-instances.sh [--rebuild\|--dry-run]` | zaměření instancí (joinmastodon + AI) → cache |
 | `./refresh-instances.sh` | build → classify → build v jednom (kategorie i pro nové instance) |
@@ -446,6 +449,38 @@ projdeme je znovu a přepíšeme boosty/oblíbení. Bez toho by si post zaindexo
 pár minut po publikaci nesl svoje nuly celou retenci — a Skokani ve Vyhledávání
 se z těch čísel počítají. Nestojí to requesty navíc za jednotlivé posty: čerstvá
 čísla přijdou v týchž stránkách timeline, jen se u nich nezastavíme dřív.
+
+## `cache_avatars.rb` — lokální kopie avatarů
+
+```bash
+ruby bin/cache_avatars.rb              # doplní chybějící, prořeže, nahraje
+ruby bin/cache_avatars.rb --dry-run    # jen spočítá
+ruby bin/cache_avatars.rb --rebuild    # od nuly
+```
+ENV: `AVATAR_SIZE` (112), `AVATAR_QUALITY` (80), `AVATAR_DIR` (web/avatars), `LIMIT`.
+
+Avatary se dřív načítaly přímo z domovských instancí. To znamenalo dvě věci:
+**~65 cizích serverů vidělo IP každého návštěvníka** a prohlížeč stahoval obrázky
+400×400 px (medián 25 kB, p90 207 kB), aby je vykreslil na 56 px — celý seznam
+Účtů dělal skoro **40 MB**. Zmenšená kopie na vlastní doméně řeší obojí:
+**~3 kB na avatar**, jedno spojení, nikdo třetí.
+
+- Jméno souboru je hash **zdrojové URL**. Mastodon má v URL obsahový hash obrázku,
+  takže nezměněná URL = nezměněný obrázek → další běhy nestahují nic. Změna avataru
+  dá novou URL → nový soubor → starý se prořeže. Žádné cache-busting hlavičky.
+- **Prořezávání je zároveň cesta, kterou z webu zmizí avatar účtu vyřazeného
+  blocklistem** — účet z katalogu vypadl, takže na jeho soubor nikdo neukazuje.
+- Účet bez použitelné kopie (smazaný avatar, nedostupná instance) zůstane bez
+  `avatar_local` a frontend u něj sáhne po vzdálené URL jako dřív.
+- Animovaný GIF se uloží jako statický první snímek — Mastodon sám avatary ve
+  výchozím nastavení nepřehrává.
+
+**Závislost je měkká:** potřebuje `vipsthumbnail` (nebo `magick`/`convert`). Když
+žádný není, skript skončí bez chyby a web dál používá vzdálené URL. Produkční
+kontejner má vips 8.15.3 i ImageMagick 6.9.12.
+
+Měřeno na 60 účtech v produkčním kontejneru: 3,8 MB → 0,18 MB (**95 % úspora**),
+17 s. Druhý běh nestahuje nic (1 s). Pro celý katalog čekej ~15 min a ~10 MB.
 
 ## `build_instances.rb` — přehled instancí
 

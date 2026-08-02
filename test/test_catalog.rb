@@ -102,20 +102,9 @@ class TestCatalogHelpers < Minitest::Test
     assert_nil moved_target("moved" => { "acct" => "bezdomeny" })
   end
 
-  # Publikovaný payload nesmí obsahovat interní pole — hlavně _ai_description,
-  # tedy strojově psané charakteristiky lidí, které web nikde nezobrazuje.
-  def test_public_keys_exclude_internal_fields
-    %w[_ai_description mastodon_id source_details last_verified_at unverified_since
-       verify_failures].each do |k|
-      refute_includes PUBLIC_KEYS, k
-    end
-  end
-
-  def test_public_keys_cover_what_the_frontend_renders
-    %w[id display_name type family language categories avatar bio followers
-       posts_week created_at last_status_at profile_url source_platforms bot
-       followers_delta activity_delta].each do |k|
-      assert_includes PUBLIC_KEYS, k
-    end
+  # PUBLIC_KEYS teď žije v lib/catalog.rb (sdílí ho cache_avatars.rb) — testuje se
+  # v test_catalog_publish.rb. Tady jen ověříme, že alias pořád ukazuje tam.
+  def test_public_keys_come_from_the_shared_module
+    assert_same Catalog::PUBLIC_KEYS, PUBLIC_KEYS
   end
 end

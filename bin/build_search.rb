@@ -256,7 +256,9 @@ def build_users(seen, cat)
     u["cat"] = true
     u["ob"]  = c["family"]
     u["ty"]  = c["type"]
-    u["av"]  ||= c["avatar"]
+    # Lokální (zmenšená) kopie má přednost před vzdálenou URL — viz cache_avatars.rb.
+    # Přepisujeme i to, co přišlo z postu: tam je vždycky vzdálená adresa.
+    u["av"]  = c["avatar_local"] || u["av"] || c["avatar"]
     u["fo"]  = c["followers"] if c["followers"]
     u["_bio"]  = MastodonAPI.strip_html(c["bio"].to_s)
     u["_tags"] = Array(c["categories"]).join(" ")

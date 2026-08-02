@@ -131,9 +131,21 @@ module Surfer
     !ENV["SURFER_URL"].to_s.empty? && !ENV["SURFER_TOKEN"].to_s.empty?
   end
 
-  # Nahraje lokální soubor `path` na Surfer pod jeho basename (+ SURFER_REMOTE_DIR).
-  # `logger` je volitelný callable (např. method(:log)); jinak tiše.
-  def upload(path, logger: nil)
+  # Složí vzdálenou cestu: SURFER_REMOTE_DIR / [subdir] / jméno souboru.
+  def remote_path(name, subdir: nil)
+    parts = [ENV["SURFER_REMOTE_DIR"].to_s.gsub(%r{\A/+|/+\z}, ""),
+             subdir.to_s.gsub(%r{\A/+|/+\z}, ""), name]
+    parts.reject(&:empty?).join("/")
+  end
+
+  def encode_remote(remote)
+    remote.split("/").map { |s| URI.encode_www_form_component(s) }.join("/")
+  end
+
+  # Nahraje lokální soubor `path` na Surfer pod jeho basename (+ SURFER_REMOTE_DIR
+  # a volitelný `subdir`, např. "avatars"). `logger` je volitelný callable.
+  # `quiet: true` potlačí hlášku o úspěchu — u tisíců avatarů by log zaplavila.
+  def upload(path, logger: nil, subdir: nil, quiet: false)
     say = ->(m) { logger&.call(m) }
     unless configured?
       say.call("  ℹ️  SURFER_URL/SURFER_TOKEN nenastaveny → upload přeskočen (#{path})")
@@ -142,9 +154,8 @@ module Surfer
 
     base  = ENV["SURFER_URL"].to_s.chomp("/")
     token = ENV["SURFER_TOKEN"].to_s
-    dir   = ENV["SURFER_REMOTE_DIR"].to_s.gsub(%r{\A/+|/+\z}, "")
-    remote = dir.empty? ? File.basename(path) : "#{dir}/#{File.basename(path)}"
-    remote_enc = remote.split("/").map { |s| URI.encode_www_form_component(s) }.join("/")
+    remote = remote_path(File.basename(path), subdir: subdir)
+    remote_enc = encode_remote(remote)
 
     uri = URI("#{base}/api/files/#{remote_enc}" \
               "?access_token=#{URI.encode_www_form_component(token)}" \
@@ -173,10 +184,39 @@ module Surfer
       body.close
     end
     ok = resp.code.to_i.between?(200, 299)
-    say.call("  #{ok ? '✅' : '❌'} upload → #{base}/#{remote} (HTTP #{resp.code})")
+    say.call("  #{ok ? '✅' : '❌'} upload → #{base}/#{remote} (HTTP #{resp.code})") unless ok && quiet
     ok ? :ok : :failed
   rescue StandardError => e
     say.call("  ❌ upload selhal: #{e.class}: #{e.message}")
+    :failed
+  end
+
+  # Smaže soubor na Surferu. Potřeba pro prořezávání cache avatarů — když účet
+  # z katalogu zmizí (blocklist, migrace, změna obrázku), musí zmizet i jeho
+  # nahraná kopie, jinak by na webu zůstala viset napořád.
+  # Vrací :ok / :missing / :skipped / :failed.
+  def delete(name, logger: nil, subdir: nil)
+    say = ->(m) { logger&.call(m) }
+    return :skipped unless configured?
+
+    base   = ENV["SURFER_URL"].to_s.chomp("/")
+    token  = ENV["SURFER_TOKEN"].to_s
+    remote = remote_path(name, subdir: subdir)
+    uri = URI("#{base}/api/files/#{encode_remote(remote)}?access_token=#{URI.encode_www_form_component(token)}")
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = (uri.scheme == "https")
+    http.open_timeout = 15
+    http.read_timeout = 60
+    resp = http.request(Net::HTTP::Delete.new(uri))
+    code = resp.code.to_i
+    return :ok if code.between?(200, 299)
+    return :missing if code == 404
+
+    say.call("  ⚠️  smazání #{remote} selhalo (HTTP #{code})")
+    :failed
+  rescue StandardError => e
+    say.call("  ⚠️  smazání #{name} selhalo: #{e.class}: #{e.message}")
     :failed
   end
 end

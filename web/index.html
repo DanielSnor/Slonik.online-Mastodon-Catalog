@@ -895,11 +895,13 @@
             (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> na OSCLOUD),
             bez osobních údajů. Veškerá „chytrost" se odehrává předem v dávkových
             skriptech — web jen zobrazuje hotová data.</p>
-          <p>Jedna věc, o které je fér vědět: <strong>avatary a loga instancí</strong> se
-            načítají přímo z domovských serverů jejich majitelů, ne z našeho. Ty servery tak
-            uvidí IP adresu tvého prohlížeče. Neposíláme jim informaci o tom, kterou stránku
-            Sloníka si prohlížíš (<code>referrerPolicy: no-referrer</code>), ale samotnému
-            spojení se bez proxy zabránit nedá.</p>
+          <p><strong>Avatary</strong> si nestahujeme odjinud: děláme si jejich zmenšenou
+            kopii (112 px) a servírujeme ji z vlastní domény. Tvůj prohlížeč se tak při
+            prohlížení katalogu nespojí s žádným cizím serverem, který by z toho viděl tvoji
+            IP adresu — a stáhne přitom asi dvacetinu dat. Když se kopii nepodaří pořídit
+            (účet avatar smazal, instance je nedostupná), zobrazí se místo něj iniciála.
+            <strong>Loga instancí</strong> se zatím načítají z instancí přímo, aspoň bez
+            informace o prohlížené stránce (<code>referrerPolicy: no-referrer</code>).</p>
           <h3>Sběr dat</h3>
           <p>Na samostatném serveru běží sada skriptů v jazyce <strong>Ruby</strong>, které
             pravidelně (cronem) sbírají data z <strong>veřejných rozhraní Mastodonu</strong> —
@@ -940,11 +942,13 @@
             (self-hosted <a href="https://umami.is" target="_blank" rel="noopener">Umami</a> on OSCLOUD),
             with no personal data. All the “smarts” happen beforehand in batch scripts — the site
             just displays ready-made data.</p>
-          <p>One thing worth knowing: <strong>avatars and instance logos</strong> load directly
-            from their owners' home servers, not from ours, so those servers see your browser's
-            IP address. We don't tell them which page of Sloník you're viewing
-            (<code>referrerPolicy: no-referrer</code>), but the connection itself can't be
-            avoided without proxying every image.</p>
+          <p><strong>Avatars</strong> aren't loaded from elsewhere: we keep a downscaled copy
+            (112 px) and serve it from our own domain. Browsing the catalog therefore contacts
+            no third-party server that could log your IP address — and transfers roughly a
+            twentieth of the data. When a copy can't be made (the account removed its avatar,
+            the instance is unreachable) an initial is shown instead. <strong>Instance
+            logos</strong> still load from the instances themselves, at least without telling
+            them which page you're on (<code>referrerPolicy: no-referrer</code>).</p>
           <h3>Data collection</h3>
           <p>A separate server runs a set of <strong>Ruby</strong> scripts that regularly (via
             cron) collect data from the <strong>public Mastodon APIs</strong> — the social

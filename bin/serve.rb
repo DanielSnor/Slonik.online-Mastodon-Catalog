@@ -16,6 +16,7 @@ MIME = {
   ".json" => "application/json; charset=utf-8",
   ".jpg" => "image/jpeg", ".jpeg" => "image/jpeg",
   ".png" => "image/png", ".svg" => "image/svg+xml",
+  ".webp" => "image/webp", ".gif" => "image/gif",
   ".ico" => "image/x-icon",
 }.freeze
 
