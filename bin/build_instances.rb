@@ -18,7 +18,7 @@ require_relative "../lib/config"
 require_relative "../lib/mastodon_api"
 
 OUT_PATH     = File.join(Paths::WEB_DIR, "instances.json")
-CATALOG_PATH = File.join(Paths::WEB_DIR, "data.json")
+CATALOG_PATH = Paths.catalog_source
 TOPICS_PATH  = File.join(Paths::DATA_DIR, "instance_topics.json")
 # Obecné instance (mimo instances.txt) zahrň, jen když na nich máme aspoň tolik
 # katalogových účtů — ať se vyhneme dlouhému ocasu jednorázových instancí.

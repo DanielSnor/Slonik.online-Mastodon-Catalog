@@ -15,4 +15,20 @@ module Paths
   LOGS_DIR   = File.join(ROOT, "logs")
   ARCHIV_DIR = File.join(ROOT, "archiv")
   CONFIG_ENV = File.join(ROOT, "config.env") # tajemství; mimo git, jen na serveru
+
+  # Katalog má dvě podoby a je důležité je neplést:
+  #   CATALOG_STORE  — interní úložiště, PLNÉ záznamy (mastodon_id pro pipeline,
+  #                    _ai_description, stav ověření…). Čte a zapisuje pipeline.
+  #   CATALOG_PUBLIC — co se publikuje na web a stahuje každý návštěvník: jen pole,
+  #                    která frontend opravdu vykresluje, kompaktní JSON.
+  # Historicky to byl jeden soubor (web/data.json), takže se do prohlížečů posílala
+  # i interní pole. Skripty čtou store a padají zpět na public (migrace starých
+  # instalací, kde store ještě nevznikl).
+  CATALOG_STORE  = File.join(DATA_DIR, "catalog.json")
+  CATALOG_PUBLIC = File.join(WEB_DIR, "data.json")
+
+  # Cesta ke katalogu ke ČTENÍ: store, dokud existuje, jinak publikovaná verze.
+  def self.catalog_source
+    File.exist?(CATALOG_STORE) ? CATALOG_STORE : CATALOG_PUBLIC
+  end
 end

@@ -35,7 +35,9 @@ DRY_RUN = ARGV.include?("--dry-run")
 
 MASTODON_TOKEN = ENV["MASTODON_TOKEN"]
 MASTODON_DELAY = (ENV["MASTODON_DELAY"] || "1.0").to_f
-DATA_JSON_PATH = ENV["DATA_JSON_PATH"] || File.join(Paths::WEB_DIR, "data.json")
+# Interní úložiště katalogu (drží mastodon_id, díky kterému se přeskočí lookup);
+# fallback na publikovanou verzi kvůli starším instalacím. Viz Paths.
+DATA_JSON_PATH = ENV["DATA_JSON_PATH"] || Paths.catalog_source
 OUTPUT_DIR     = ENV["OUTPUT_DIR"] || Paths::DATA_DIR
 STATUSES_LIMIT = 40
 # Strop stránkování na účet a den (40 postů/stránka). 25 stránek = 1000 postů,

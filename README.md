@@ -41,6 +41,7 @@ config/                 kurátorské seznamy + šablony (verzované)
   crontab.example         cron (collect denně, search à 6 h; consolidate/discover/update/classify/instances pondělí)
 
 data/                   data (vstupy/výstupy/stav; generované jsou v .gitignore)
+  catalog.json              ÚLOŽIŠTĚ katalogu — plné záznamy (viz „Katalog: úložiště vs. web")
   discovered_accounts.json  kandidáti z discovery
   skipped_noncz.json        cache vyřazených (ne-CZ/SK + boti)
   collect_state.json        min_id stav přírůstkového sběru
@@ -51,7 +52,8 @@ data/                   data (vstupy/výstupy/stav; generované jsou v .gitignor
   ai_results.json/.jsonl    výstup diagnostické kategorizace
 
 web/                    nasaditelný web (index.html, app.js, app.css, header.jpg,
-                        links.js = kurátorovaný rozcestník (tab Odkazy), data.json = katalog,
+                        links.js = kurátorovaný rozcestník (tab Odkazy),
+                        data.json = PUBLIKOVANÝ katalog (jen zobrazovaná pole),
                         posts.json, DEPLOY.md; search.json + users.json = vyhledávání,
                         instances.json = tab Instance)
 docs/                   dokumentace (ai_report.md…)
@@ -250,7 +252,8 @@ CZ/SK katalog. Vypnutí: `--no-czsk-filter`. Log na konci hlásí počet přesko
 a uspořenou částku.
 
 ENV: `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_DELAY`, `MASTODON_DELAY`, `MASTODON_TOKEN`,
-`CATALOG_PATH` (web/data.json), `CANDIDATES_PATH` (discovered_accounts.json),
+`CATALOG_PATH` (data/catalog.json), `PUBLIC_CATALOG_PATH` (web/data.json),
+`CANDIDATES_PATH` (discovered_accounts.json),
 `STATUSES_LIMIT` (20), `LIMIT_NEW` (0 = bez limitu), `SURFER_*`.
 Flagy: `--dry-run`, `--no-categorize`, `--no-refresh`, `--no-upload`,
 `--no-czsk-filter`, `--recheck-skipped`, `--retype`, `--refamily`. Původní `data.json`
@@ -270,6 +273,23 @@ pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede *
 účty v koši `lifestyle` (přebij přes `REFAMILY_FROM=a,b`) a přeurčí `family` +
 `categories`. Na rozdíl od `--retype` potřebuje i posty (rodina se řídí převažujícím
 tématem, ne biem), takže stojí jako nový účet (~$0.0079/účet).
+
+**Katalog: úložiště vs. web.** Katalog žije ve dvou souborech:
+
+| Soubor | Co obsahuje | Kdo ho čte |
+|---|---|---|
+| `data/catalog.json` | **plné** záznamy: `mastodon_id`, `source_details`, `_ai_description`, stav ověření | pipeline (`update_catalog`, `collect_posts`, `build_search`, `build_instances`) |
+| `web/data.json` | jen pole, která frontend **vykresluje**; kompaktní JSON | prohlížeč návštěvníka |
+
+Dřív to byl jeden soubor, takže se do prohlížečů posílala i interní pole — mimo
+jiné `_ai_description`, tedy strojově psané charakteristiky konkrétních lidí,
+které se na webu nikde nezobrazují. Publikovaný payload je díky tomu o ~44 %
+menší (3,58 → 1,99 MB na produkčních datech).
+
+Seznam publikovaných polí drží `PUBLIC_KEYS` v `update_catalog.rb`. **Nové pole,
+které má frontend zobrazovat, se do něj musí doplnit** — jinak zůstane jen
+v úložišti. Skripty čtou store a padají zpět na `web/data.json`, takže instalace
+bez `data/catalog.json` se převede sama při prvním běhu `update_catalog`.
 
 **Kadence refreshe** (`REFRESH_DORMANT_DAYS` 28, `REFRESH_SILENT_DAYS` 91,
 `DORMANT_DAYS` 365): tři čtvrtiny katalogu tvoří účty, které nikdy nic nenapsaly

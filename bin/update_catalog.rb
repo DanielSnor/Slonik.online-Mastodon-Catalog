@@ -54,7 +54,18 @@ REFAMILY        = ARGV.include?("--refamily")        # přeznač family u aktivn
 # do něj i regionální účty a nešly od nezařaditelných odlišit.
 REFAMILY_FROM   = (ENV["REFAMILY_FROM"] || "lifestyle").split(",").map(&:strip).reject(&:empty?)
 
-CATALOG_PATH    = ENV["CATALOG_PATH"] || File.join(Paths::WEB_DIR, "data.json")
+# Interní úložiště katalogu (plné záznamy) vs. publikovaný payload (jen pole,
+# která frontend vykresluje). Viz Paths.
+CATALOG_PATH    = ENV["CATALOG_PATH"] || Paths::CATALOG_STORE
+PUBLIC_PATH     = ENV["PUBLIC_CATALOG_PATH"] || Paths::CATALOG_PUBLIC
+# Pole, která jdou na web. Cokoli mimo tenhle seznam zůstává jen v úložišti —
+# interní klíče (mastodon_id, stav ověření) i _ai_description, což jsou strojově
+# psané charakteristiky konkrétních lidí, které web nikde nezobrazuje.
+PUBLIC_KEYS = %w[
+  id display_name type family language categories avatar bio followers posts_week
+  created_at last_status_at profile_url source_platforms bot
+  followers_delta activity_delta
+].freeze
 STATUS_PATH     = ENV["STATUS_PATH"] || File.join(Paths::WEB_DIR, "status.json")
 CANDIDATES_PATH = ENV["CANDIDATES_PATH"] || File.join(Paths::DATA_DIR, "discovered_accounts.json")
 SKIPPED_PATH    = ENV["SKIPPED_PATH"] || File.join(Paths::DATA_DIR, "skipped_noncz.json")
@@ -357,68 +368,31 @@ def refamily_targets(catalog)
   catalog.select { |r| r["id"].to_s.include?("@") && active?(r) && REFAMILY_FROM.include?(r["family"]) }
 end
 
-# Režim --retype: přeznačí pole "type" u AKTIVNÍCH účtů (kolektiv→team, úřad→
-# institution, magazín→media…). Levné (bio-only), s checkpointem + throttle uploadem.
-def run_retype(catalog)
-  if AICLIENT.instance_variable_get(:@api_key).to_s.empty?
-    abort("❌ Chybí ANTHROPIC_API_KEY (nutné pro --retype)")
-  end
-
+# Odhad rozsahu a ceny --retype (jen výpis, nic nemění). Samotné přetypování
+# probíhá v rámci běžného průchodu v main() — tady by mělo vlastní, druhou kopii
+# zápisu i uploadu, což se rozešlo hned, jak katalog dostal oddělené úložiště.
+def estimate_retype(catalog)
   targets = catalog.select { |r| r["id"].to_s.include?("@") && active?(r) }
   log("RETYPE: aktivních účtů k přeznačení typu: #{targets.size} / #{catalog.size}")
-  if DRY_RUN
-    log("Odhad ceny (bio-only, ~$0.004/účet): ~$#{format('%.2f', targets.size * 0.004)} — nic nemění.")
-    return
-  end
-
-  backup = "#{CATALOG_PATH}.bak"
-  File.write(backup, File.read(CATALOG_PATH)) if File.exist?(CATALOG_PATH)
-
-  new_type = {} # id => nový type
-  changed = 0
-  last_upload_at = 0
-  flush = lambda do
-    merged = catalog.map { |x| new_type.key?(x["id"]) ? x.merge("type" => new_type[x["id"]]) : x }
-    tmp = "#{CATALOG_PATH}.tmp"
-    File.write(tmp, JSON.pretty_generate(merged))
-    File.rename(tmp, CATALOG_PATH)
-  end
-
-  targets.each_with_index do |rec, i|
-    t = classify_type(rec)
-    if t && t != rec["type"]
-      new_type[rec["id"]] = t
-      changed += 1
-      log("  ✏️  #{rec['id']}: #{rec['type']} → #{t}")
-    end
-    sleep(AI_DELAY) if AI_DELAY.positive?
-
-    next unless FLUSH_EVERY.positive? && ((i + 1) % FLUSH_EVERY).zero?
-
-    flush.call
-    log("  💾 checkpoint @#{i + 1}/#{targets.size}: změněno typů #{changed}")
-    if !NO_UPLOAD && UPLOAD_EVERY.positive? && (i + 1 - last_upload_at) >= UPLOAD_EVERY
-      Surfer.upload(CATALOG_PATH, logger: method(:log))
-      last_upload_at = i + 1
-    end
-  end
-  flush.call
-  log("")
-  log("✅ RETYPE hotovo. Změněno typů: #{changed}/#{targets.size}. Záloha: #{backup}")
-  Surfer.upload(CATALOG_PATH, logger: method(:log)) unless NO_UPLOAD
+  log("Odhad ceny (bio-only, ~$0.004/účet): ~$#{format('%.2f', targets.size * 0.004)} — nic nemění.")
 end
 
 def main
-  abort("❌ Katalog nenalezen: #{CATALOG_PATH}") unless File.exist?(CATALOG_PATH)
+  # Migrace ze starého uspořádání (jediný soubor web/data.json): když úložiště
+  # ještě neexistuje, načteme katalog z publikované verze a od téhle chvíle se
+  # zapisuje do obou.
+  source = File.exist?(CATALOG_PATH) ? CATALOG_PATH : PUBLIC_PATH
+  abort("❌ Katalog nenalezen: #{CATALOG_PATH} ani #{PUBLIC_PATH}") unless File.exist?(source)
+  log("ℹ️  Úložiště #{CATALOG_PATH} zatím neexistuje → přebírám katalog z #{PUBLIC_PATH}") if source != CATALOG_PATH
   abort("❌ Kandidáti nenalezeni: #{CANDIDATES_PATH}") unless RETYPE || REFAMILY || File.exist?(CANDIDATES_PATH)
 
-  catalog = JSON.parse(File.read(CATALOG_PATH, encoding: "UTF-8"))
+  catalog = JSON.parse(File.read(source, encoding: "UTF-8"))
   catalog = catalog.is_a?(Array) ? catalog : []
 
   # --retype --dry-run: jen odhad ceny přetypování (nic nemění). Reálný --retype
   # se provede v rámci běžného průchodu (refresh+moved → přetypování → zápis).
   if RETYPE && DRY_RUN
-    run_retype(catalog)
+    estimate_retype(catalog)
     return
   end
 
@@ -570,13 +544,29 @@ def main
 
   # Záloha původního katalogu JEDNOU (před prvním zápisem), pak checkpointy.
   backup = "#{CATALOG_PATH}.bak"
-  File.write(backup, File.read(CATALOG_PATH)) if File.exist?(CATALOG_PATH)
+  File.write(backup, File.read(source)) if File.exist?(source)
 
   # Atomický zápis (temp + rename) — crash nezanechá rozbitý JSON.
   write_json = lambda do |path, data|
     tmp = "#{path}.tmp"
     File.write(tmp, JSON.pretty_generate(data))
     File.rename(tmp, path)
+  end
+
+  # Zápis publikované verze: jen veřejná pole, kompaktní JSON (pretty print přidá
+  # ~700 kB, které si stáhne každý návštěvník). Volá se všude tam, kde se zapisuje
+  # úložiště, ať jsou průběžné uploady konzistentní.
+  publish = lambda do |data|
+    slim = data.map { |rec| rec.select { |k, _| PUBLIC_KEYS.include?(k) } }
+    tmp = "#{PUBLIC_PATH}.tmp"
+    File.write(tmp, JSON.generate(slim))
+    File.rename(tmp, PUBLIC_PATH)
+  end
+
+  # Zapiš úložiště i publikovanou verzi najednou (checkpointy i finální zápis).
+  save_both = lambda do |data|
+    write_json.call(CATALOG_PATH, data)
+    publish.call(data)
   end
 
   # 1b) Přetypování aktivních (--retype) — type-only AI (bio+jméno), levné. Mutuje
@@ -601,10 +591,10 @@ def main
 
       next unless FLUSH_EVERY.positive? && ((i + 1) % FLUSH_EVERY).zero?
 
-      write_json.call(CATALOG_PATH, refreshed)
+      save_both.call(refreshed)
       log("  💾 checkpoint @#{i + 1}/#{targets.size}: typů #{rch}")
       if !NO_UPLOAD && UPLOAD_EVERY.positive? && (i + 1 - last_up) >= UPLOAD_EVERY
-        Surfer.upload(CATALOG_PATH, logger: method(:log))
+        Surfer.upload(PUBLIC_PATH, logger: method(:log))
         last_up = i + 1
       end
     end
@@ -635,10 +625,10 @@ def main
 
       next unless FLUSH_EVERY.positive? && ((i + 1) % FLUSH_EVERY).zero?
 
-      write_json.call(CATALOG_PATH, refreshed)
+      save_both.call(refreshed)
       log("  💾 checkpoint @#{i + 1}/#{targets.size}: rodin #{fch}")
       if !NO_UPLOAD && UPLOAD_EVERY.positive? && (i + 1 - last_up) >= UPLOAD_EVERY
-        Surfer.upload(CATALOG_PATH, logger: method(:log))
+        Surfer.upload(PUBLIC_PATH, logger: method(:log))
         last_up = i + 1
       end
     end
@@ -661,7 +651,7 @@ def main
     checkpoint = lambda do
       write_json.call(SKIPPED_PATH, skipped_set.to_a.sort)
       write_json.call(LOOKUP_FAILED_PATH, failed_map)
-      write_json.call(CATALOG_PATH, refreshed + added)
+      save_both.call(refreshed + added)
     end
 
     last_upload_at = 0
@@ -682,7 +672,7 @@ def main
 
       # Průběžný (throttlovaný) upload na Surfer — data.json je čerstvě zapsaný výše.
       if !NO_UPLOAD && UPLOAD_EVERY.positive? && (i + 1 - last_upload_at) >= UPLOAD_EVERY
-        Surfer.upload(CATALOG_PATH, logger: method(:log))
+        Surfer.upload(PUBLIC_PATH, logger: method(:log))
         last_upload_at = i + 1
       end
     end
@@ -734,7 +724,7 @@ def main
   # Pozn.: ruční účty (manual_accounts.txt) si bot příznak drží z reálného API
   # flagu (viz categorize_candidate / refresh_record) — žádné vynucování bot:true,
   # ať lidé přidaní ručně (mimo CZ/SK filtr) nedostanou badge „Automat".
-  write_json.call(CATALOG_PATH, result)
+  save_both.call(result)
   # Cache selhaných lookupů (vč. prořezání expirovaných) — i pro refresh-only běh.
   write_json.call(LOOKUP_FAILED_PATH, failed_map)
   # Snapshot metrik pro příští výpočet týdenních přírůstků (jen po refreshi).
@@ -757,7 +747,7 @@ def main
   if NO_UPLOAD
     log("⏭  --no-upload → data.json + status.json zůstávají jen lokálně.")
   else
-    Surfer.upload(CATALOG_PATH, logger: method(:log))
+    Surfer.upload(PUBLIC_PATH, logger: method(:log))
     Surfer.upload(STATUS_PATH, logger: method(:log))
   end
 end

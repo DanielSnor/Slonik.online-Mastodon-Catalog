@@ -54,7 +54,7 @@ REFRESH_CUTOFF       = Time.now.utc - REFRESH_DAYS * 86_400
 FEEDS_REFRESH_CUTOFF = Time.now.utc - FEEDS_REFRESH_DAYS * 86_400
 OUT_PATH       = File.join(Paths::WEB_DIR, "search.json")
 USERS_PATH     = File.join(Paths::WEB_DIR, "users.json")
-CATALOG_PATH   = File.join(Paths::WEB_DIR, "data.json")
+CATALOG_PATH   = Paths.catalog_source   # interní úložiště (má mastodon_id), fallback web/data.json
 STATE_PATH     = File.join(Paths::DATA_DIR, "search_state.json")
 STATUS_PATH    = File.join(Paths::WEB_DIR, "status.json")   # malý meta soubor pro patičku
 
