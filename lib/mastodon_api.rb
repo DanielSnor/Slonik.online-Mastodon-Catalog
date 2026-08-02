@@ -7,7 +7,8 @@
 #
 # Konfigurace přes ENV (nastaví je lib/config z config.env):
 #   MASTODON_TOKEN        read-only bearer token (volitelný)
-#   MASTODON_DELAY        sekundy mezi requesty (default 1.0)
+#   MASTODON_DELAY        sekundy mezi requesty NA JEDNU INSTANCI (default 1.0)
+#   MASTODON_GLOBAL_DELAY minimum mezi libovolnými dvěma requesty (default 0)
 #   RATE_REMAINING_FLOOR  práh X-RateLimit-Remaining, pod kterým čekáme (default 10)
 #
 # Použití:
@@ -43,10 +44,13 @@ class MastodonAPI
   def initialize(logger: nil, delay: nil, token: nil)
     @log = logger || ->(_m) {}
     @delay = (delay || ENV["MASTODON_DELAY"] || "1.0").to_f
+    @global_delay = (ENV["MASTODON_GLOBAL_DELAY"] || "0").to_f
     @token = token || ENV["MASTODON_TOKEN"]
     @floor = (ENV["RATE_REMAINING_FLOOR"] || "10").to_i
     @rate = {} # host => { remaining:, reset_at: }
     @dead_hosts = Hash.new(0) # host => počet selhání spojení (per běh)
+    @last_req = {}            # host => čas posledního requestu (per-host throttle)
+    @last_any = nil           # čas posledního requestu kamkoli (globální strop)
   end
 
   # Kolikrát opakovat po HTTP 429 a jak dlouho maximálně čekat na jeden pokus.
@@ -60,6 +64,7 @@ class MastodonAPI
     host = HOST_ALIASES[host] || host                            # WEB_DOMAIN split → funkční API host
     return [0, nil, nil] if @dead_hosts[host] >= DEAD_HOST_LIMIT # nedostupný host → přeskoč
     respect_rate_limit(host)
+    throttle(host)
     base, query = path.split("?", 2)
     uri = URI::HTTPS.build(host: host, path: base, query: query)
     req = Net::HTTP::Get.new(uri)
@@ -90,7 +95,6 @@ class MastodonAPI
       return get(host, path, attempt: attempt + 1)
     end
 
-    sleep(@delay) if @delay.positive?
     parsed = (JSON.parse(resp.body) if code == 200 && resp["content-type"].to_s.include?("json"))
     [code, parsed, resp["link"]]
   rescue *CONNECT_ERRORS => e
@@ -166,6 +170,25 @@ class MastodonAPI
   end
 
   private
+
+  # Rozestup mezi requesty. Rate limity Mastodonu jsou PER INSTANCI, takže čekat
+  # po každém requestu bez ohledu na cíl znamená platit cizí prodlevu i tehdy,
+  # když se ptáme někoho úplně jiného — a katalog je rozprostřený přes ~90 domén.
+  # Čekáme proto jen tolik, kolik zbývá do @delay od posledního dotazu NA TENTO
+  # host. @global_delay (default 0) je volitelný strop na celkové tempo.
+  #
+  # Pozn.: čeká se PŘED requestem, ne po něm — jinak by se prodleva připočítala
+  # i k poslednímu dotazu na host, na který už se nikdo ptát nebude.
+  def throttle(host)
+    now = Time.now
+    waits = []
+    waits << (@delay - (now - @last_req[host])) if @delay.positive? && @last_req[host]
+    waits << (@global_delay - (now - @last_any)) if @global_delay.positive? && @last_any
+    wait = waits.max
+    sleep(wait) if wait&.positive?
+    @last_req[host] = Time.now
+    @last_any = @last_req[host]
+  end
 
   def record_rate(host, resp)
     return unless resp["x-ratelimit-remaining"]

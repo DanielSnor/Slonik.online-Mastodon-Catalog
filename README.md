@@ -163,7 +163,8 @@ chmod 600 config.env
 | `SURFER_REMOTE_DIR` | cílová podsložka na Surferu (prázdné = root) |
 | `MASTODON_TOKEN` | read-only bearer token (volitelný; lepší rate limity) |
 | `ANTHROPIC_API_KEY` | Claude API klíč (lépe přes ENV / `~/.anthropic_key`, ne do config.env) |
-| `MASTODON_DELAY` | sekundy mezi Mastodon requesty |
+| `MASTODON_DELAY` | sekundy mezi requesty **na jednu instanci** (per-host, ne globálně) |
+| `MASTODON_GLOBAL_DELAY` | volitelný strop na celkové tempo (default 0 = bez stropu) |
 
 > 🔐 **Nikdy** nevkládej tokeny do chatu/commitu. Při úniku rotuj. `ANTHROPIC_API_KEY`
 > drž raději v `~/.anthropic_key` (`chmod 600`) a předávej přes ENV (riziko iCloud sync).
