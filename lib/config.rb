@@ -16,6 +16,7 @@
 
 require "net/http"
 require "set"
+require "stringio"
 require "uri"
 require_relative "paths"
 
@@ -80,6 +81,50 @@ end
 # Vrací :ok / :skipped / :failed. Logování přes blok (volitelný), aby si každý
 # skript mohl použít svůj log().
 module Surfer
+  # Multipart tělo jako STREAM: preambule → soubor → epilog. Net::HTTP si z něj
+  # bere data po kouscích, takže se soubor nikdy nedrží celý v paměti. Dřív se
+  # tělo skládalo do jednoho Stringu, tedy soubor v paměti dvakrát (binread +
+  # kopie v těle) — u search.json to je na produkci 16 MB.
+  #
+  # Vedlejší efekt: zmizel i encoding trik. Skládat binární obsah do UTF-8 Stringu
+  # fungovalo jen proto, že hlavičky byly čistě ASCII; diakritika v názvu souboru
+  # by shodila celý upload na Encoding::CompatibilityError.
+  class MultipartStream
+    def initialize(preamble, path, epilogue)
+      @ios = [StringIO.new(preamble), File.open(path, "rb"), StringIO.new(epilogue)]
+      @size = preamble.bytesize + File.size(path) + epilogue.bytesize
+    end
+
+    attr_reader :size
+
+    def read(len = nil, outbuf = nil)
+      buf = +""
+      buf.force_encoding(Encoding::BINARY)
+      until @ios.empty? || (len && buf.bytesize >= len)
+        io = @ios.first
+        chunk = len ? io.read(len - buf.bytesize) : io.read
+        if chunk.nil? || chunk.empty?
+          @ios.shift.close
+          next
+        end
+        buf << chunk.b
+      end
+
+      if len && buf.empty?   # EOF
+        outbuf&.clear
+        return nil
+      end
+      return outbuf.replace(buf) if outbuf
+
+      buf
+    end
+
+    def close
+      @ios.each { |io| io.close }
+      @ios.clear
+    end
+  end
+
   module_function
 
   def configured?
@@ -106,23 +151,27 @@ module Surfer
               "&newFilePath=#{URI.encode_www_form_component(remote)}")
 
     boundary = "----MastoKatalog#{rand(10**16)}"
-    body = +""
-    body << "--#{boundary}\r\n"
-    body << "Content-Disposition: form-data; name=\"file\"; filename=\"#{File.basename(path)}\"\r\n"
-    body << "Content-Type: application/octet-stream\r\n\r\n"
-    body << File.binread(path)
-    body << "\r\n--#{boundary}--\r\n"
+    preamble = +"--#{boundary}\r\n"
+    preamble << "Content-Disposition: form-data; name=\"file\"; filename=\"#{File.basename(path)}\"\r\n"
+    preamble << "Content-Type: application/octet-stream\r\n\r\n"
+    epilogue = "\r\n--#{boundary}--\r\n"
 
+    body = MultipartStream.new(preamble, path, epilogue)
     req = Net::HTTP::Post.new(uri)
     req["Content-Type"] = "multipart/form-data; boundary=#{boundary}"
     req["User-Agent"] = "mastokatalog-upload/1.0"
-    req.body = body
+    req.body_stream = body
+    req.content_length = body.size
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = (uri.scheme == "https")
     http.open_timeout = 15
     http.read_timeout = 60
-    resp = http.request(req)
+    begin
+      resp = http.request(req)
+    ensure
+      body.close
+    end
     ok = resp.code.to_i.between?(200, 299)
     say.call("  #{ok ? '✅' : '❌'} upload → #{base}/#{remote} (HTTP #{resp.code})")
     ok ? :ok : :failed
