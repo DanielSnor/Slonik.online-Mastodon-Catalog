@@ -896,12 +896,15 @@
             bez osobních údajů. Veškerá „chytrost" se odehrává předem v dávkových
             skriptech — web jen zobrazuje hotová data.</p>
           <p><strong>Obrázky si nestahujeme odjinud.</strong> Avatary účtů i loga instancí
-            máme jako zmenšené kopie na vlastní doméně, takže se tvůj prohlížeč při prohlížení
-            Sloníka nespojí s žádným cizím serverem, který by z toho viděl tvoji IP adresu.
-            Vedlejší efekt: stáhne řádově míň dat — originály jsou u avatarů 400 px a u log
-            dokonce bannery přes 1200 px, přestože se vykreslují na 56, resp. 60 pixelech.
-            Když se kopii nepodaří pořídit (obrázek byl smazán, instance je nedostupná),
-            zkusí se původní adresa a jinak se zobrazí iniciála.</p>
+            máme jako zmenšené kopie na vlastní doméně. Dřív se načítaly přímo z domovských
+            serverů, takže zhruba <strong>65 cizích strojů</strong> vidělo IP adresu každého
+            návštěvníka; teď už žádný. Vedlejší efekt: stáhne se řádově míň dat — originály
+            jsou u avatarů 400 px a u log dokonce bannery přes 1200 px, přestože se vykreslují
+            na 56, resp. 60 pixelech. Když se kopii nepodaří pořídit (obrázek byl smazán,
+            instance je nedostupná), zkusí se původní adresa a jinak se zobrazí iniciála.</p>
+          <p>Jediná adresa mimo <code>slonik.online</code>, kterou tvůj prohlížeč načte, je
+            skript měření návštěvnosti. Běží ale na <strong>tomtéž stroji</strong>, který ti
+            posílá i zbytek webu — nedozví se tedy o tobě nic, co už by nevěděl.</p>
           <h3>Sběr dat</h3>
           <p>Na samostatném serveru běží sada skriptů v jazyce <strong>Ruby</strong>, které
             pravidelně (cronem) sbírají data z <strong>veřejných rozhraní Mastodonu</strong> —
@@ -943,12 +946,16 @@
             with no personal data. All the “smarts” happen beforehand in batch scripts — the site
             just displays ready-made data.</p>
           <p><strong>Images aren't loaded from elsewhere.</strong> Both account avatars and
-            instance logos are kept as downscaled copies on our own domain, so browsing Sloník
-            contacts no third-party server that could log your IP address. As a side effect it
-            transfers far less data — the originals are 400 px for avatars and banners over
-            1200 px for logos, even though they render at 56 and 60 pixels. When a copy can't
-            be made (the image was deleted, the instance is unreachable) the original address
-            is tried and otherwise an initial is shown.</p>
+            instance logos are kept as downscaled copies on our own domain. They used to load
+            from their home servers, so around <strong>65 other machines</strong> saw every
+            visitor's IP address; now none do. As a side effect far less data is transferred —
+            the originals are 400 px for avatars and banners over 1200 px for logos, even
+            though they render at 56 and 60 pixels. When a copy can't be made (the image was
+            deleted, the instance is unreachable) the original address is tried and otherwise
+            an initial is shown.</p>
+          <p>The only address outside <code>slonik.online</code> your browser loads is the
+            analytics script. It runs on the <strong>same machine</strong> that serves you the
+            rest of the site, so it learns nothing about you that it wouldn't know anyway.</p>
           <h3>Data collection</h3>
           <p>A separate server runs a set of <strong>Ruby</strong> scripts that regularly (via
             cron) collect data from the <strong>public Mastodon APIs</strong> — the social
