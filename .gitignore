@@ -9,6 +9,7 @@ scripts/deploy.env
 web/*.json
 data/*.json
 data/posts_*.jsonl
+data/archive/
 
 # Zálohy + logy
 *.bak

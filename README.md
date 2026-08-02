@@ -49,6 +49,8 @@ data/                   data (vstupy/výstupy/stav; generované jsou v .gitignor
   instance_topics.json      cache zaměření instancí (host → kategorie; joinmastodon/AI)
   metrics_snapshot.json     předchozí followers/statuses účtů → týdenní přírůstky (Skokani v Účtech)
   posts_YYYY_Www.jsonl      denní sběr postů (do konsolidace)
+  weekly_stats.json         souhrn každého konsolidovaného týdne (časová řada)
+  archive/*.jsonl.gz        syrové týdny po konsolidaci (gzip, ~2 MB z 12 MB)
 
 web/                    nasaditelný web (index.html, app.js, app.css, header.jpg,
                         links.js = kurátorovaný rozcestník (tab Odkazy),
@@ -381,7 +383,14 @@ ENV: `OUTPUT_DIR` (.), `WEEK_OVERRIDE`, `INPUT_JSONL`, `SURFER_*`, `KEEP_JSONL=1
   Smazané posty (404/410) vypadnou; neověřené si podrží hodnoty ze sběru.
   Vypnutí: `RESCORE=0`, omezení počtu: `RESCORE_LIMIT=N`.
 - **Skokani** (`risers`): `score = engagement − průměr_účtu`; účty s < 3 posty vyloučeny.
-- JSONL se maže až po úspěšném uploadu (nebo když Surfer není konfigurován).
+- **Archiv** (`ARCHIVE=0` vypne): před smazáním JSONL se týden uloží dvakrát —
+  `data/archive/posts_YYYY_Www.jsonl.gz` (syrová data, ~2 MB z 12 MB) a souhrn
+  v `data/weekly_stats.json` + `web/weekly.json` (~2,5 kB/týden: počty postů a účtů,
+  engagement vč. mediánu, rozpad po instancích/rodinách/jazycích, top hashtagy).
+  Bez toho z 8 900 postů týdne trvale nezbylo nic — `posts.json` drží 6 × 50 a každý
+  týden se přepíše. Opakovaná konsolidace téhož týdne záznam v řadě nahradí.
+- JSONL se maže až po úspěšném uploadu (nebo když Surfer není konfigurován)
+  **a po úspěšné archivaci** — když archiv selže, syrová data zůstanou.
 
 ## `build_search.rb` — index pro vyhledávání
 

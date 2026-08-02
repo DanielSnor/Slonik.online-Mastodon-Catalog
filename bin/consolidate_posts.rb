@@ -32,6 +32,8 @@ require "json"
 require "uri"
 require "date"
 require "time"
+require "zlib"
+require "fileutils"
 require_relative "../lib/config" # načte config.env do ENV (Surfer credentials apod.)
 require_relative "../lib/mastodon_api"
 
@@ -44,6 +46,18 @@ DRY_RUN     = ARGV.include?("--dry-run")
 # které do žebříčků nepatří.
 RESCORE       = ENV["RESCORE"] != "0"
 RESCORE_LIMIT = (ENV["RESCORE_LIMIT"] || "0").to_i
+# Archiv. posts.json drží 6 × 50 postů a přepisuje se každý týden; JSONL se po
+# konsolidaci mazal. Ze 3 000+ postů týdne tak trvale nezbylo nic — a Sloník je
+# přitom jediný zdroj tvrdých dat o CZ/SK scéně. Držíme proto dvojí stopu:
+#   • syrový týden zagzipovaný v data/archive/ (~2 MB z 12 MB), kdyby bylo potřeba
+#     se k datům vrátit s jinou otázkou,
+#   • souhrn týdne v data/weekly_stats.json — pár kB, ale roste z něj časová řada,
+#     kterou jinak nikde nevezmeme.
+ARCHIVE       = ENV["ARCHIVE"] != "0"
+ARCHIVE_DIR   = ENV["ARCHIVE_DIR"] || File.join(Paths::DATA_DIR, "archive")
+STATS_PATH    = ENV["WEEKLY_STATS_PATH"] || File.join(Paths::DATA_DIR, "weekly_stats.json")
+STATS_PUBLIC  = ENV["WEEKLY_STATS_PUBLIC"] || File.join(Paths::WEB_DIR, "weekly.json")
+TOP_HASHTAGS  = (ENV["TOP_HASHTAGS"] || "50").to_i
 OUTPUT_DIR  = ENV["OUTPUT_DIR"] || Paths::DATA_DIR  # kde leží týdenní JSONL
 SECTION_MAX = 50           # max postů na sekci (frontend bere Top 10 / Top 50)
 RISER_MIN_POSTS = 3        # min. počet postů účtu pro výpočet skokanů
@@ -183,6 +197,77 @@ def risers_ratio(scored, max)
 end
 
 # ---------------------------------------------------------------------------
+# Archiv týdne (viz ARCHIVE výše)
+# ---------------------------------------------------------------------------
+
+# Souhrn týdne — to, co z týdne zbyde napořád. Držet celé posty by bylo zbytečné
+# (od toho je gzip archiv), tohle je řada, ze které jde číst vývoj scény.
+def weekly_stats(posts)
+  by_account = posts.group_by { |p| "#{p['account_username']}@#{p['account_instance']}" }
+  tags = Hash.new(0)
+  posts.each { |p| Array(p["hashtags"]).each { |t| tags[t.to_s.downcase] += 1 } }
+  engagements = posts.map { |p| eng(p) }.sort
+
+  {
+    "week" => WEEK_LABEL,
+    "generated_at" => Time.now.utc.iso8601,
+    "total_posts" => posts.size,
+    "accounts" => by_account.size,
+    "posts_with_media" => posts.count { |p| p["has_media"] },
+    "total_reblogs" => posts.sum { |p| reblogs(p) },
+    "total_favourites" => posts.sum { |p| favs(p) },
+    "total_engagement" => engagements.sum,
+    "median_engagement" => (engagements.empty? ? 0 : engagements[engagements.size / 2]),
+    "max_engagement" => (engagements.last || 0),
+    "posts_without_engagement" => engagements.count(&:zero?),
+    "by_instance" => posts.group_by { |p| p["account_instance"] }.transform_values(&:size)
+                          .sort_by { |_, n| -n }.to_h,
+    "by_family" => posts.group_by { |p| p["account_family"] || "?" }.transform_values(&:size)
+                        .sort_by { |_, n| -n }.to_h,
+    "by_language" => posts.group_by { |p| p["language"] || "?" }.transform_values(&:size)
+                          .sort_by { |_, n| -n }.to_h,
+    "top_hashtags" => tags.sort_by { |_, n| -n }.first(TOP_HASHTAGS).to_h,
+  }
+end
+
+# Přidá souhrn do řady. Týden se klíčuje, takže opakovaná konsolidace téhož
+# týdne záznam nahradí místo aby ho zdvojila.
+def append_stats(stats)
+  series = (JSON.parse(File.read(STATS_PATH, encoding: "UTF-8")) rescue [])
+  series = [] unless series.is_a?(Array)
+  series.reject! { |w| w["week"] == stats["week"] }
+  series << stats
+  series.sort_by! { |w| w["week"].to_s }
+
+  FileUtils.mkdir_p(File.dirname(STATS_PATH))
+  File.write("#{STATS_PATH}.tmp", JSON.pretty_generate(series))
+  File.rename("#{STATS_PATH}.tmp", STATS_PATH)
+
+  FileUtils.mkdir_p(File.dirname(STATS_PUBLIC))
+  File.write("#{STATS_PUBLIC}.tmp", JSON.generate({ "weeks" => series.size, "series" => series }))
+  File.rename("#{STATS_PUBLIC}.tmp", STATS_PUBLIC)
+  log("📈 Řada týdnů: #{series.size} (#{series.first['week']} … #{series.last['week']}) → #{STATS_PATH}")
+  series.size
+end
+
+# Zagzipuje syrový JSONL do archivu. Vrací cestu k archivu, nebo nil.
+def archive_jsonl(path)
+  FileUtils.mkdir_p(ARCHIVE_DIR)
+  dest = File.join(ARCHIVE_DIR, "#{File.basename(path)}.gz")
+  Zlib::GzipWriter.open("#{dest}.tmp") do |gz|
+    gz.mtime = File.mtime(path)
+    gz.orig_name = File.basename(path)
+    File.open(path, "rb") { |f| IO.copy_stream(f, gz) }
+  end
+  File.rename("#{dest}.tmp", dest)
+  log("🗜  Archiv: #{dest} (#{(File.size(path) / 1_048_576.0).round(1)} → #{(File.size(dest) / 1_048_576.0).round(1)} MB)")
+  dest
+rescue StandardError => e
+  log("⚠️  Archivace selhala (#{e.class}: #{e.message}) — JSONL ponechán")
+  nil
+end
+
+# ---------------------------------------------------------------------------
 # Upload — sdílená logika v lib/config.rb (Surfer.upload), aby ji sdílel
 # i update_catalog.rb. Vrací true při úspěchu.
 # ---------------------------------------------------------------------------
@@ -250,19 +335,31 @@ def main
       "risers_abs=#{result['risers_absolute'].size}, risers_ratio=#{result['risers_ratio'].size}")
 
   if DRY_RUN
-    log("⚠️  DRY-RUN — upload a cleanup přeskočeny.")
+    log("⚠️  DRY-RUN — archiv, upload i cleanup přeskočeny.")
     return
   end
 
-  uploaded = upload_surfer(OUTPUT_PATH)
+  # Archiv PŘED uploadem i mazáním: souhrn i zagzipovaný týden musí existovat
+  # dřív, než se smaže zdroj, ze kterého vznikly.
+  archived = nil
+  if ARCHIVE
+    append_stats(weekly_stats(posts))
+    archived = archive_jsonl(INPUT_PATH)
+  end
 
-  # Cleanup JSONL jen pokud upload prošel (nebo nebyl konfigurován Surfer a KEEP_JSONL není).
+  uploaded = upload_surfer(OUTPUT_PATH)
+  upload_surfer(STATS_PUBLIC) if ARCHIVE && File.exist?(STATS_PUBLIC)
+
+  # Cleanup JSONL jen pokud upload prošel (nebo nebyl konfigurován Surfer a KEEP_JSONL
+  # není) A ZÁROVEŇ se povedl archiv — jinak by se syrový týden ztratil nadobro.
   surfer_configured = !ENV["SURFER_URL"].to_s.empty? && !ENV["SURFER_TOKEN"].to_s.empty?
   if ENV["KEEP_JSONL"] == "1"
     log("ℹ️  KEEP_JSONL=1 → JSONL ponechán: #{INPUT_PATH}")
+  elsif ARCHIVE && archived.nil?
+    log("⚠️  Archivace se nepovedla → JSONL ponechán: #{INPUT_PATH}")
   elsif uploaded || !surfer_configured
     File.delete(INPUT_PATH)
-    log("🧹 Smazán JSONL: #{INPUT_PATH}")
+    log("🧹 Smazán JSONL (archiv: #{archived || 'vypnut'})")
   else
     log("⚠️  Upload selhal → JSONL ponechán pro příští pokus: #{INPUT_PATH}")
   end
