@@ -73,14 +73,21 @@ end
 # Který týden
 # ---------------------------------------------------------------------------
 
-# Vrací [cwyear, cweek, "YYYY-Www"] pro daný týden.
+# ISO týden data jako [cwyear, cweek]. Pozor na `cwyear` místo `year`: 1. ledna
+# může patřit do posledního týdne loňského roku (a 31. prosince do W01 příštího).
+# Kdyby se použil `year`, jméno JSONL by na přelomu roku neodpovídalo tomu, které
+# vyrobil collect_posts, a týden by se „ztratil".
+def week_of(date)
+  [date.cwyear, date.cweek]
+end
+
+# Vrací [cwyear, cweek] konsolidovaného týdne.
 def resolve_week
   if ENV["WEEK_OVERRIDE"] && ENV["WEEK_OVERRIDE"] =~ /\A(\d{4})-W(\d{2})\z/
     [Regexp.last_match(1).to_i, Regexp.last_match(2).to_i]
   else
     # Minulý týden (consolidate běží v pondělí pro týden, který skončil v neděli).
-    d = Date.today - 7
-    [d.cwyear, d.cweek]
+    week_of(Date.today - 7)
   end
 end
 

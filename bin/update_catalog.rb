@@ -363,6 +363,23 @@ def classify_family(rec)
   [AICLIENT.map_family(norm["family"]), norm["tags"]]
 end
 
+# Dedup katalogu podle id, case-insensitive (Mastodon handle je nezávislý na
+# velikosti písmen). Řeší jak migrace (`moved` → starý záznam ukazuje na adresu,
+# která už v katalogu je), tak duplicity lišící se jen velikostí písmen.
+# Ze skupiny zůstane záznam s NEJNOVĚJŠÍ aktivitou (`last_status_at`), při shodě
+# ten dřívější v pořadí (kurátorovaný) — nikdy tedy nepřebije živý záznam mrtvým.
+def dedup_by_id(records)
+  fresh = ->(rec) { (rec["last_status_at"] || "").to_s }
+  best = {}
+  records.each_with_index do |r, i|
+    key = r["id"].to_s.downcase
+    cur = best[key]
+    best[key] = i if cur.nil? || fresh.call(r) > fresh.call(records[cur])
+  end
+  keep = best.values.to_set
+  records.each_with_index.select { |_r, i| keep.include?(i) }.map(&:first)
+end
+
 # Účty, na které cílí --refamily: aktivní a sedící v některé z REFAMILY_FROM rodin.
 def refamily_targets(catalog)
   catalog.select { |r| r["id"].to_s.include?("@") && active?(r) && REFAMILY_FROM.include?(r["family"]) }
@@ -710,15 +727,7 @@ def main
   # s NEJNOVĚJŠÍ aktivitou (last_status_at), při shodě ten dřívější v katalogu
   # (kurátorovaný) — tím nikdy nepreferujeme „mrtvý"/neobnovený záznam před živým.
   before_uniq = result.size
-  fresh = ->(rec) { (rec["last_status_at"] || "").to_s }
-  best = {}
-  result.each_with_index do |r, i|
-    key = r["id"].to_s.downcase
-    cur = best[key]
-    best[key] = i if cur.nil? || fresh.call(r) > fresh.call(result[cur])
-  end
-  keep = best.values.to_set
-  result = result.each_with_index.select { |_r, i| keep.include?(i) }.map(&:first)
+  result = dedup_by_id(result)
   dups = before_uniq - result.size
   log("Dedup (case-insensitive): sloučeno #{dups} duplicit") if dups.positive?
   # Pozn.: ruční účty (manual_accounts.txt) si bot příznak drží z reálného API

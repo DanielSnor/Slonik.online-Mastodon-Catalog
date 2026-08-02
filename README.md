@@ -15,6 +15,7 @@ Vzniklo jako PoC průzkum (5 fází); historické artefakty jsou v `archiv/`.
 
 ```
 bin/                    spustitelné skripty (entry points)
+  run_tests.rb            spouštěč testů (každý soubor ve vlastním procesu)
   discover_accounts.rb    objevování účtů ze sociálního grafu + directory
   update_catalog.rb       inkrementální aktualizace web/data.json (AI jen pro nové)
   collect_posts.rb        denní sběr postů → data/posts_YYYY_Www.jsonl
@@ -57,6 +58,7 @@ web/                    nasaditelný web (index.html, app.js, app.css, header.jp
                         data.json = PUBLIKOVANÝ katalog (jen zobrazovaná pole),
                         posts.json, DEPLOY.md; search.json + users.json = vyhledávání,
                         instances.json = tab Instance)
+test/                   testy čistých funkcí (minitest ze stdlib, žádné gemy)
 docs/                   dokumentace (ai_report.md…)
 logs/                   logy běhů
 scripts/                deploy: sync_local_to_test.sh, sync_test_to_prod.sh,
@@ -88,8 +90,25 @@ Tenké wrappery — samy přejdou do kořene projektu a `update.sh` načte
 | `./refresh-instances.sh` | build → classify → build v jednom (kategorie i pro nové instance) |
 | `./deploy-web.sh [--assets\|--data]` | nahraje web bundle na Surfer (na serveru) |
 | `./test-surfer.sh` | ověření přístupu na Surfer |
+| `./test.sh [jmeno]` | testy čistých funkcí (bez sítě a produkčních dat) |
 
 Pod kapotou volají `ruby bin/<skript>.rb`; jdou spouštět i přímo.
+
+## Testy
+
+```bash
+./test.sh            # vše
+./test.sh posts      # jen test/test_posts.rb
+```
+
+Minitest ze stdlib, žádné gemy. Pokrývají **čisté funkce** — tedy místa, kde se
+tichá chyba neprojeví pádem, ale křivými čísly na webu o pár týdnů později:
+mapování rodin, normalizaci odpovědi modelu, dedup katalogu, kadenci refreshe,
+žebříčky a skokany, souhrn týdne, ISO týden na přelomu roku, skládání multipart
+těla pro upload a per-host throttling. Na síť ani na produkční data nesahají.
+
+Každý soubor běží ve vlastním procesu: testy načítají skripty z `bin/`, které
+definují konstanty stejných jmen.
 
 ## Nasazení na server (deploy)
 

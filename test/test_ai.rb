@@ -1,0 +1,65 @@
+# frozen_string_literal: true
+
+require_relative "helper"
+require_relative "../lib/ai"
+
+# Klasifikace: mapování rodin a normalizace odpovědi modelu. Právě tady vznikla
+# chyba, kvůli které polovina katalogu skončila v koši „lifestyle" — model rodinu
+# `local` vracel, ale FAMILY_MAP na ni neměl klíč, takže spadla na fallback.
+class TestAI < Minitest::Test
+  def setup
+    @ai = AI.new
+  end
+
+  def test_every_family_the_model_can_return_has_a_mapping
+    AI::FAMILIES.each do |f|
+      refute_nil AI::FAMILY_MAP[f], "FAMILY_MAP nemá klíč pro rodinu #{f.inspect}"
+    end
+  end
+
+  def test_mapping_targets_are_known_catalog_families
+    AI::FAMILY_MAP.each_value do |target|
+      assert_includes AI::VALID_CATALOG_FAMILIES, target
+    end
+  end
+
+  def test_local_is_not_swallowed_by_the_lifestyle_bucket
+    assert_equal "local", @ai.map_family("local")
+    assert_equal "lifestyle", @ai.map_family("other")
+    refute_equal @ai.map_family("local"), @ai.map_family("other"),
+                 "regionální účty musí jít odlišit od nezařaditelných"
+  end
+
+  def test_unknown_family_falls_back
+    assert_equal "lifestyle", @ai.map_family("neco-co-model-vymyslel")
+    assert_equal "lifestyle", @ai.map_family(nil)
+  end
+
+  def test_map_family_is_case_and_whitespace_tolerant
+    assert_equal "science_tech", @ai.map_family("  TECH ")
+  end
+
+  def test_normalize_sanitizes_tags
+    out = @ai.normalize("family" => "tech", "type" => "person",
+                        "tags" => ["Software Developer", "OPEN SOURCE", "self-hosting", "", "a b", "x", "y", "z"],
+                        "description" => "  popis  ")
+    assert_equal %w[software_developer open_source selfhosting a_b x], out["tags"], "max 5, lowercase, bez interpunkce"
+    assert_equal "popis", out["description"]
+  end
+
+  def test_normalize_falls_back_on_invalid_values
+    out = @ai.normalize("family" => "vymyslena", "type" => "vymysleny", "tags" => nil, "description" => nil)
+    assert_equal "other", out["family"]
+    assert_equal AI::DEFAULT_TYPE, out["type"]
+    assert_empty out["tags"]
+  end
+
+  def test_parse_json_survives_what_models_wrap_around_json
+    expected = { "family" => "tech" }
+    assert_equal expected, @ai.parse_json('{"family": "tech"}')
+    assert_equal expected, @ai.parse_json("```json\n{\"family\": \"tech\"}\n```")
+    assert_equal expected, @ai.parse_json("Jistě! {\"family\": \"tech\"} — snad pomůže.")
+    assert_nil @ai.parse_json("bez jsonu")
+    assert_nil @ai.parse_json("{rozbity json")
+  end
+end
