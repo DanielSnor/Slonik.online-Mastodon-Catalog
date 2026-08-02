@@ -1006,3 +1006,6 @@ a { color: inherit; text-decoration: none; }
 
 /* posts grid sdílí auto-fill, ale karty jsou trochu širší pro text */
 .posts-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+/* Obrázek, který se nenačetl (viz bindImageFallbacks — CSP nedovolí inline onerror). */
+.is-broken { display: none; }

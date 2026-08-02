@@ -1568,6 +1568,7 @@
     modalEl        = document.getElementById('detail-modal');
     embedModalEl   = document.getElementById('embed-modal');
     bindEmbedModalClose();
+    bindImageFallbacks();
     institutionBtnEl = document.querySelector('.filter-group[data-filter="type"] button[data-value="institution"]');
     hoverEl        = buildHoverEl();
 
@@ -2361,6 +2362,23 @@
     embedModalEl.removeAttribute('open');
     embedModalEl.classList.remove('modal-fallback-open');
     embedModalEl.innerHTML = '';
+  }
+
+  // Náhrada za inline onerror="" v HTML: obsahová politika (CSP) inline handlery
+  // blokuje, takže se chování obrázků, které se nenačtou, řeší tady.
+  //   data-onerror="remove-figure" → zmizí celý <figure> (popisek bez obrázku nedává smysl)
+  //   data-onerror="hide"          → schová se jen obrázek
+  function bindImageFallbacks() {
+    document.querySelectorAll('img[data-onerror]').forEach(function (img) {
+      var apply = function () {
+        var fig = img.getAttribute('data-onerror') === 'remove-figure' ? img.closest('figure') : null;
+        if (fig) fig.remove(); else img.classList.add('is-broken');
+      };
+      img.addEventListener('error', apply);
+      // Obrázek mohl selhat dřív, než jsme stihli listener připnout (app.js běží
+      // až na konci body) — complete && naturalWidth === 0 přesně tenhle stav značí.
+      if (img.complete && img.naturalWidth === 0) apply();
+    });
   }
 
   function bindEmbedModalClose() {

@@ -28,10 +28,32 @@
   <meta name="twitter:description" content="Katalog lidí na Mastodonu — česky a slovensky. Hledej podle oblasti, zájmů nebo instance.">
   <meta name="twitter:image" content="https://slonik.online/header.jpg">
 
+  <!-- Obsahová politika: web je statický, takže smí jen to, co opravdu potřebuje.
+       script-src bez 'unsafe-inline' = vlastní skripty + jeden podepsaný externí
+       (viz integrity níže). img-src https: kvůli avatarům z cizích instancí,
+       frame-src https: kvůli náhledu příspěvku (iframe na domovskou instanci). -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://analytics.oscloud.cz;
+    style-src 'self';
+    img-src 'self' https: data:;
+    connect-src 'self' https://analytics.oscloud.cz;
+    frame-src https:;
+    base-uri 'none';
+    form-action 'none';
+    object-src 'none'">
+
   <link rel="stylesheet" href="app.css">
 
-  <!-- Anonymní návštěvnost (Umami, self-hosted na OSCLOUD; bez cookies, bez osobních dat) -->
-  <script defer src="https://analytics.oscloud.cz/script.js" data-website-id="07a16f69-8744-4034-bba3-fef3ef59b9af"></script>
+  <!-- Anonymní návštěvnost (Umami, self-hosted na OSCLOUD; bez cookies, bez osobních dat).
+       integrity = otisk konkrétní verze script.js: kdyby někdo analytics.oscloud.cz
+       podvrhl, prohlížeč skript nespustí. POZOR: po upgradu Umami se otisk změní
+       a měření se TIŠE zastaví (web běží dál) — nový otisk:
+         curl -s https://analytics.oscloud.cz/script.js | openssl dgst -sha384 -binary | openssl base64 -A -->
+  <script defer src="https://analytics.oscloud.cz/script.js"
+          integrity="sha384-KovSIPpdrAZNHs+M91d7FOrLat5rqcpTtQUq/GLIzYwAt+eN0EQHlgdUgm/0U2j+"
+          crossorigin="anonymous"
+          data-website-id="07a16f69-8744-4034-bba3-fef3ef59b9af"></script>
 </head>
 <body data-updated="2026-05-31">
   <header class="site-header">
@@ -452,7 +474,7 @@
             najde jen příspěvky, kde jsou ta slova hned za sebou. Slovo <strong>vyloučíš mínusem</strong> —
             <code>praha -kolo</code> najde příspěvky s „praha" bez „kolo".</p>
           <figure class="about-figure">
-            <img src="search-results.png" alt="Náhled výsledků vyhledávání" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="search-results.png" alt="Náhled výsledků vyhledávání" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Filtry a žebříčky</h3>
           <ul>
@@ -481,7 +503,7 @@
             only posts where those words appear right next to each other. <strong>Exclude a word
             with a minus</strong> — <code>praha -kolo</code> finds posts with "praha" but without "kolo".</p>
           <figure class="about-figure">
-            <img src="search-results.png" alt="Search results preview" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="search-results.png" alt="Search results preview" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Filters and charts</h3>
           <ul>
@@ -506,7 +528,7 @@
             příspěvků, stav registrací a kolik je na ní účtů z našeho katalogu. Tlačítko
             <em>Založit účet</em> vede přímo na registraci dané instance.</p>
           <figure class="about-figure">
-            <img src="card-instance.png" alt="Náhled karty instance" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-instance.png" alt="Náhled karty instance" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Sekce</h3>
           <ul>
@@ -531,7 +553,7 @@
             count, registration status and how many catalog accounts live there. The
             <em>Create account</em> button goes straight to that instance's sign-up.</p>
           <figure class="about-figure">
-            <img src="card-instance.png" alt="Instance card preview" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-instance.png" alt="Instance card preview" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Sections</h3>
           <ul>
@@ -556,7 +578,7 @@
             jméno, handle, oblast, krátké bio a počet sledujících. Kliknutím na kartu
             otevřeš detail.</p>
           <figure class="about-figure">
-            <img src="card-account.png" alt="Náhled karty účtu" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-account.png" alt="Náhled karty účtu" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Filtrování (levý panel)</h3>
           <ul>
@@ -580,7 +602,7 @@
             <em>Otevřít profil</em> tě přenese na domovskou instanci účtu, odkud ho
             můžeš ze své vlastní instance začít sledovat.</p>
           <figure class="about-figure">
-            <img src="card-account-detail.png" alt="Náhled detailu účtu" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-account-detail.png" alt="Náhled detailu účtu" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
         <div data-lang-block="en" hidden>
@@ -589,7 +611,7 @@
             shows the name, handle, topic, a short bio and the follower count. Click a
             card to open its detail.</p>
           <figure class="about-figure">
-            <img src="card-account.png" alt="Account card preview" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-account.png" alt="Account card preview" loading="lazy" data-onerror="remove-figure">
           </figure>
           <h3>Filtering (left panel)</h3>
           <ul>
@@ -613,7 +635,7 @@
             <em>Open profile</em> button takes you to the account's home instance, from
             where you can follow it via your own instance.</p>
           <figure class="about-figure">
-            <img src="card-account-detail.png" alt="Account detail preview" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-account-detail.png" alt="Account detail preview" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
       </article>
@@ -649,7 +671,7 @@
             počet boostů 🔁, oblíbení ⭐ a datum 📅; odkaz <em>Otevřít na Mastodonu</em>
             vede na původní příspěvek.</p>
           <figure class="about-figure">
-            <img src="card-post.png" alt="Náhled karty postu" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-post.png" alt="Náhled karty postu" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
         <div data-lang-block="en" hidden>
@@ -681,7 +703,7 @@
             At the bottom you'll find boosts 🔁, favourites ⭐ and the date 📅; the
             <em>Open on Mastodon</em> link goes to the original post.</p>
           <figure class="about-figure">
-            <img src="card-post.png" alt="Post card preview" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="card-post.png" alt="Post card preview" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
       </article>
@@ -784,7 +806,7 @@
             <li>💳 <a href="https://revolut.me/zpravobot" target="_blank" rel="noopener">revolut.me/zpravobot</a></li>
           </ul>
           <figure class="about-figure qr">
-            <img src="qr.jpg" alt="QR kód pro platbu" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="qr.jpg" alt="QR kód pro platbu" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
         <div data-lang-block="en" hidden>
@@ -850,7 +872,7 @@
             <li>💳 <a href="https://revolut.me/zpravobot" target="_blank" rel="noopener">revolut.me/zpravobot</a></li>
           </ul>
           <figure class="about-figure qr">
-            <img src="qr.jpg" alt="Payment QR code" loading="lazy" onerror="this.closest('figure').remove()">
+            <img src="qr.jpg" alt="Payment QR code" loading="lazy" data-onerror="remove-figure">
           </figure>
         </div>
       </article>
@@ -942,7 +964,7 @@
       <article class="about-content" data-about-section="author" hidden>
         <div data-lang-block="cs">
           <h2>O autorovi</h2>
-          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" onerror="this.style.display='none'">
+          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" data-onerror="hide">
           <p>Za Sloníkem stojí <strong>Daniel Šnor</strong> — nadšenec do Mastodonu a celé
             sítě fediverse z českého prostředí.</p>
           <p>Provozuje projekt <a href="https://zpravobot.news" target="_blank" rel="noopener">Zprávobot.news</a> —
@@ -961,7 +983,7 @@
         </div>
         <div data-lang-block="en" hidden>
           <h2>About the author</h2>
-          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" onerror="this.style.display='none'">
+          <img class="author-photo" src="daniel.jpg" alt="Daniel Šnor" loading="lazy" data-onerror="hide">
           <p>Sloník is made by <strong>Daniel Šnor</strong> — a Czech enthusiast of Mastodon
             and the wider fediverse.</p>
           <p>He runs the <a href="https://zpravobot.news" target="_blank" rel="noopener">Zprávobot.news</a>
@@ -1013,7 +1035,7 @@
       <p class="footer-meta"><span id="footer-indexed" hidden><span data-i18n="footer_indexed">Vyhledávání naposledy indexováno</span> <strong id="indexed-date"></strong>. </span><span data-i18n="footer_updated">Katalog naposledy aktualizován</span> <strong id="catalog-date">31. 5. 2026</strong><span id="updated-relative" class="updated-relative"></span>.</p>
       <a class="footer-sponsor" href="https://oscloud.cz" target="_blank" rel="noopener" title="OSCLOUD">
         <span class="footer-sponsor-text" data-i18n="footer_sponsor">Tento web běží díky podpoře</span>
-        <img class="footer-sponsor-logo" src="oscloud.png" alt="OSCLOUD" height="24" onerror="this.style.display='none'">
+        <img class="footer-sponsor-logo" src="oscloud.png" alt="OSCLOUD" height="24" data-onerror="hide">
       </a>
     </div>
   </footer>
