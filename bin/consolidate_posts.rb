@@ -19,6 +19,8 @@
 #   OUTPUT_DIR    adresář pro JSONL + posts.json (default .)
 #   WEEK_OVERRIDE YYYY-Www — který týden konsolidovat (default minulý týden)
 #   INPUT_JSONL   explicitní cesta k JSONL (přebije WEEK_OVERRIDE)
+#   RESCORE=0     vypne přeměření engagementu (viz níže); default zapnuto
+#   RESCORE_LIMIT max. počet přeměřených postů (0 = všechny; default 0)
 #   SURFER_URL    base URL Surferu (např. https://katalog-test.zpravobot.news)
 #   SURFER_TOKEN  Surfer access_token (Files API)
 #   SURFER_REMOTE_DIR  cílová podsložka na Surferu (default "" = root; např. "slonik-test")
@@ -31,8 +33,17 @@ require "uri"
 require "date"
 require "time"
 require_relative "../lib/config" # načte config.env do ENV (Surfer credentials apod.)
+require_relative "../lib/mastodon_api"
 
 DRY_RUN     = ARGV.include?("--dry-run")
+# Přeměření engagementu před sestavením žebříčků. collect_posts ukládá boosty a
+# oblíbení v okamžiku sběru, tedy 15 minut až 24 hodin po publikaci (podle toho,
+# v kolik post vyšel) — porovnávat taková čísla mezi sebou znamená řadit podle
+# různě dlouhého expozičního okna, ne podle úspěchu postu. Tady si čísla stáhneme
+# znovu, všechna ve stejný okamžik. Zároveň se tím odhalí smazané posty (404/410),
+# které do žebříčků nepatří.
+RESCORE       = ENV["RESCORE"] != "0"
+RESCORE_LIMIT = (ENV["RESCORE_LIMIT"] || "0").to_i
 OUTPUT_DIR  = ENV["OUTPUT_DIR"] || Paths::DATA_DIR  # kde leží týdenní JSONL
 SECTION_MAX = 50           # max postů na sekci (frontend bere Top 10 / Top 50)
 RISER_MIN_POSTS = 3        # min. počet postů účtu pro výpočet skokanů
@@ -82,6 +93,44 @@ def load_posts(path)
     end
   end
   posts
+end
+
+# ---------------------------------------------------------------------------
+# Přeměření engagementu (viz RESCORE výše)
+# ---------------------------------------------------------------------------
+
+# Stáhne aktuální boosty/oblíbení pro každý post a přepíše je v `posts` na místě.
+# Vrací pole postů, které mají do žebříčků jít (bez smazaných). Posty, které se
+# nepodaří ověřit (výpadek instance), si ponechají hodnoty ze sběru — horší než
+# čerstvé číslo, ale lepší než je z týdne vyhodit.
+def rescore!(posts)
+  api = MastodonAPI.new(logger: method(:log))
+  targets = RESCORE_LIMIT.positive? ? posts.first(RESCORE_LIMIT) : posts
+  log("Přeměřuji engagement u #{targets.size} postů (#{posts.size} celkem)…")
+
+  updated = gone = failed = 0
+  targets.each_with_index do |p, i|
+    host = p["account_instance"].to_s
+    sid  = p["id"].to_s
+    next if host.empty? || sid.empty?
+
+    code, st, = api.get(host, "/api/v1/statuses/#{URI.encode_www_form_component(sid)}")
+    if code == 200 && st.is_a?(Hash)
+      p["reblogs_count"]    = st["reblogs_count"] || 0
+      p["favourites_count"] = st["favourites_count"] || 0
+      p["engagement"]       = p["reblogs_count"] + p["favourites_count"]
+      updated += 1
+    elsif [404, 410].include?(code)
+      p["_gone"] = true    # smazaný / skrytý post → do žebříčků nepatří
+      gone += 1
+    else
+      failed += 1
+    end
+    log("  … #{i + 1}/#{targets.size} (obnoveno #{updated}, smazaných #{gone}, chyb #{failed})") if ((i + 1) % 250).zero?
+  end
+
+  log("Přeměřeno: #{updated} | smazaných vyřazeno: #{gone} | neověřeno (ponechána čísla ze sběru): #{failed}")
+  posts.reject { |p| p["_gone"] }
 end
 
 # ---------------------------------------------------------------------------
@@ -167,6 +216,9 @@ def main
 
   accounts = posts.map { |p| "#{p['account_username']}@#{p['account_instance']}" }.uniq
   log("Načteno postů: #{posts.size} | unikátních účtů: #{accounts.size}")
+
+  posts = rescore!(posts) if RESCORE
+  abort("❌ Po přeměření nezbyly žádné posty") if posts.empty?
 
   scored = score_risers(posts)
   result = {

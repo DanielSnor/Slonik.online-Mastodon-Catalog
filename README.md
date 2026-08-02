@@ -329,9 +329,16 @@ ruby bin/consolidate_posts.rb                              # minulý týden → 
 WEEK_OVERRIDE=2026-W22 ruby bin/consolidate_posts.rb       # konkrétní týden
 INPUT_JSONL=/tmp/x.jsonl ruby bin/consolidate_posts.rb --dry-run
 ```
-ENV: `OUTPUT_DIR` (.), `WEEK_OVERRIDE`, `INPUT_JSONL`, `SURFER_*`, `KEEP_JSONL=1`.
+ENV: `OUTPUT_DIR` (.), `WEEK_OVERRIDE`, `INPUT_JSONL`, `SURFER_*`, `KEEP_JSONL=1`,
+`RESCORE=0`, `RESCORE_LIMIT`.
 - Sekce `posts.json` (každá max 50): `top_by_engagement`, `top_by_reblogs`,
   `top_by_favourites`, `top_by_date`, `risers`.
+- **Přeměření engagementu:** `collect_posts` ukládá boosty/oblíbení v okamžiku
+  sběru, tedy 15 min až 24 h po publikaci (podle denní doby). Řadit taková čísla
+  mezi sebou znamená řadit podle délky expozice, ne podle úspěchu — konsolidace
+  proto všechna čísla stáhne znovu, najednou (`GET /api/v1/statuses/:id`).
+  Smazané posty (404/410) vypadnou; neověřené si podrží hodnoty ze sběru.
+  Vypnutí: `RESCORE=0`, omezení počtu: `RESCORE_LIMIT=N`.
 - **Skokani** (`risers`): `score = engagement − průměr_účtu`; účty s < 3 posty vyloučeny.
 - JSONL se maže až po úspěšném uploadu (nebo když Surfer není konfigurován).
 
