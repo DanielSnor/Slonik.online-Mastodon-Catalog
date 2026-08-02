@@ -65,8 +65,7 @@ web/                    nasaditelný web (index.html, app.js, app.css, header.jp
 test/                   testy čistých funkcí (minitest ze stdlib, žádné gemy)
 docs/                   dokumentace (ai_report.md…)
 logs/                   logy běhů
-scripts/                deploy: sync_local_to_test.sh, sync_test_to_prod.sh,
-                        sync_data_to_test.sh + migrate_layout.sh (převod layoutu)
+scripts/                migrate_layout.sh (jednorázový převod starého layoutu)
 config.env.example      šablona konfigurace; reálný config.env (kořen) je v .gitignore
 ```
 
@@ -117,55 +116,50 @@ definují konstanty stejných jmen.
 
 ## Nasazení na server (deploy)
 
+Server je **git clone**. Deploy = `git pull` v kontejneru, žádný rsync.
+
 ```bash
-cp scripts/deploy.env.example scripts/deploy.env   # vyplň SSH souřadnice serveru
-./scripts/sync_local_to_test.sh --dry-run          # náhled, co se nahraje
-./scripts/sync_local_to_test.sh                    # nahraje KÓD (rsync přes SSH)
+# 1) lokálně
+./test.sh && git push
+
+# 2) na serveru (v kontejneru appky)
+slonik                      # alias: cd /app/data/slonik
+git pull
 ```
 
-Synchronizuje **jen kód** (`bin/`, `lib/`, `*.sh`, `scripts/*.sh`, `web/` assety
-**vč. obrázků** bez `*.json` dat, `docs/`, README). **Nikdy nepřepíše** `config.env`,
-`data/`, `web/*.json`, `logs/` ani (defaultně) `config/*.txt`. Seznamy pošleš jen vědomě:
-`./scripts/sync_local_to_test.sh --with-config`.
-
-### Test ↔ Prod (na serveru)
-
-Obě instance jsou na serveru (`/app/data/slonik-test` a `/app/data/slonik`); rsync
-běží lokálně na serveru přes SSH. Nastav `SLONIK_PROD_DIR` v `scripts/deploy.env`.
+Nic dalšího není potřeba — Ruby skripty se nekompilují a web publikují samy
+dávkové úlohy. Po změně frontendu (`index.html`/`app.js`/`app.css`) ještě:
 
 ```bash
-./scripts/sync_test_to_prod.sh --dry-run    # promote KÓDU test → prod (náhled)
-./scripts/sync_test_to_prod.sh              # bez data/, config.env, config/, web/*.json
-./scripts/sync_test_to_prod.sh --with-config  # i config/ (seznamy + crontab)
-
-./scripts/sync_data_to_test.sh --dry-run    # zrcadlení DAT prod → test (náhled)
-./scripts/sync_data_to_test.sh              # jen data/ + web/*.json (test nad reálnými daty)
+./deploy-web.sh --assets    # nahraje frontend na Surfer
 ```
 
-- **test → prod**: aplikace + web assety, **bez** dat a konfigurací (prod má vlastní).
-- **data prod → test**: jen datové soubory (`data/` + `web/*.json`), kód/config beze změny.
-- Žádný z nich nepoužívá `--delete`.
+**Co na serveru žije mimo git** (a `git pull` se toho nedotkne):
+`config.env`, `data/`, `logs/`, `web/*.json` a `web/avatars/` + `web/logos/`.
+Všechno ostatní včetně `config/*.txt` je v repu — **kurátorské seznamy se tedy
+edituj lokálně a pošli commitem**, ne přímo na serveru. Když se přesto změní na
+serveru, `git pull` je přepíše.
 
-První přechod ze starého plochého layoutu na serveru: `scripts/migrate_layout.sh`
-(viz jeho hlavička).
+### Provozní pasti v kontejneru
 
-### Publikace webu na Surfer (test → Surfer)
+- `git` spouštěj pod uživatelem, kterému strom patří (`1000:1000`), jinak spadne
+  na `safe.directory`.
+- Cesty `/app/data/…` jsou jediné persistentní; cokoli mimo ně restart appky smaže.
 
-Frontend (index.html/app.js/app.css/header.jpg) se na živý web nahrává **na serveru**
-přes Files API — stejný `Surfer.upload` jako pro JSON:
+### Publikace webu na Surfer
+
+Frontend (`index.html`/`app.js`/`app.css`/obrázky) se nahrává na živý web přes
+Files API — stejný `Surfer.upload` jako pro JSON:
 
 ```bash
-# na test serveru (má config.env se SURFER_TOKEN):
 ./deploy-web.sh --dry-run     # náhled, co se nahraje
 ./deploy-web.sh --assets      # jen frontend (po změně app.js/css/html)
-./deploy-web.sh               # celý bundle (frontend + data.json + posts.json)
+./deploy-web.sh               # celý bundle (frontend + data)
 ```
 
-`data.json`/`posts.json` se jinak publikují samy z `update_catalog`/`consolidate_posts`;
-`deploy-web.sh --assets` použiješ po změně frontendu.
-
-**Celý deploy řetězec:** lokálně edituješ → `sync_local_to_test.sh` (Mac → server) →
-`deploy-web.sh` (server → Surfer).
+Datové soubory (`data.json`, `posts.json`, `search.json`, `instances.json`,
+`weekly.json`) i zmenšené obrázky publikují dávkové skripty samy po každém běhu —
+ručně je nahrávat netřeba.
 
 ## Konfigurace (`config.env`)
 
@@ -596,9 +590,8 @@ katalog/kategorie se mění týdně, denně by jen zbytečně tlouklo API.
 Cron řádky proto NEobsahují `>> logs/… 2>&1`. Cron má holé prostředí → ruby musí být
 v PATH (v Cloudron cronu už je).
 
-**Na cronu běží jen PROD** (`PROJECT_DIR=/app/data/slonik`). Test se nebuilduje
-paralelně — data se do něj kopírují z produkce přes `./scripts/sync_data_to_test.sh`.
-`crontab` je per-uživatel, takže běží jen jeden set (prod); test je pro vývoj ručně.
+**Na cronu běží jen PROD** (`PROJECT_DIR=/app/data/slonik`); test prostředí
+neexistuje. Vývoj a zkoušení probíhá lokálně (`./serve.sh`, `--dry-run` u skriptů).
 
 ---
 

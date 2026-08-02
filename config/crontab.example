@@ -22,8 +22,7 @@
 # discover (04:15) → update (05:15) → refresh-instances (06:00). Consolidate musí
 # běžet AŽ PO pondělním collectu (ten teprve sesbírá neděli).
 #
-# Na cronu běží POUZE PROD. Test se nebuilduje paralelně — data se do něj kopírují
-# z produkce ručně:  ./scripts/sync_data_to_test.sh
+# Na cronu běží POUZE PROD; test prostředí neexistuje. Vývoj probíhá lokálně.
 
 # ───────────────────────── DENNĚ ─────────────────────────
 
