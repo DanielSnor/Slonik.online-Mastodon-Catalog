@@ -49,7 +49,6 @@ data/                   data (vstupy/výstupy/stav; generované jsou v .gitignor
   instance_topics.json      cache zaměření instancí (host → kategorie; joinmastodon/AI)
   metrics_snapshot.json     předchozí followers/statuses účtů → týdenní přírůstky (Skokani v Účtech)
   posts_YYYY_Www.jsonl      denní sběr postů (do konsolidace)
-  ai_results.json/.jsonl    výstup diagnostické kategorizace
 
 web/                    nasaditelný web (index.html, app.js, app.css, header.jpg,
                         links.js = kurátorovaný rozcestník (tab Odkazy),

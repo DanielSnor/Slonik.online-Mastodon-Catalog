@@ -64,8 +64,7 @@ move bin discover_accounts.rb update_catalog.rb collect_posts.rb \
 move config instances.txt seeds.txt manual_accounts.txt blocklist.txt crontab.example
 
 # 4) data / stav → data/
-move data discovered_accounts.json skipped_noncz.json collect_state.json \
-          new_candidates.json ai_results.json ai_results.jsonl
+move data discovered_accounts.json skipped_noncz.json collect_state.json new_candidates.json
 # shellcheck disable=SC2086
 move data posts_*.jsonl
 
