@@ -188,9 +188,23 @@ def refresh_record(rec, snapshot = nil)
 
   username, instance = id.split("@", 2)
   acct = API.lookup(instance, username)
-  return rec unless acct
+
+  # Selhaný lookup neznamená, že se účet nezměnil — znamená, že o něm nic nevíme.
+  # Bez značky by zaniklý účet držel followers i last_status_at z posledního
+  # úspěšného běhu donekonečna a tvářil se jako čerstvé číslo. Zaznamenáme tedy,
+  # od kdy a kolikrát se ověření nepovedlo; hodnoty samotné necháme být.
+  unless acct
+    rec = rec.dup
+    rec["verify_failures"] = rec["verify_failures"].to_i + 1
+    rec["unverified_since"] ||= Date.today.to_s
+    STATS[:unverified] += 1
+    return rec
+  end
 
   rec = rec.dup
+  rec["last_verified_at"] = Date.today.to_s
+  rec.delete("verify_failures")
+  rec.delete("unverified_since")
 
   # Migrace účtu: starý profil vrací `moved` → přesměruj záznam na novou adresu.
   # Kurátorovaná metadata (family/type/tagy/categories) zůstávají; metriky vezmeme
@@ -480,6 +494,12 @@ def main
       r
     end
     log("  Obnoveno #{done}/#{refreshable} účtů (přírůstky u #{deltas})")
+    if STATS[:unverified].positive?
+      stale = refreshed.select { |r| r["unverified_since"] }
+      oldest = stale.map { |r| r["unverified_since"] }.min
+      log("  ⚠️  Neověřeno (lookup selhal): #{STATS[:unverified]} účtů | " \
+          "celkem s neověřenými daty: #{stale.size}, nejstarší od #{oldest}")
+    end
 
     # Vyřaď boty (skutečný příznak z refreshe), které nejsou ručně povolené.
     before_bots = refreshed.size

@@ -235,6 +235,7 @@ ANTHROPIC_API_KEY=... ruby bin/update_catalog.rb     # plná aktualizace + uploa
 | Diff | nové účty (nejsou v katalogu dle `id`) vs. stávající | zdarma |
 | Refresh stávajících | followers/avatar/bio přes Mastodon lookup; rodina/tagy/popis zůstávají | **zdarma** (bez AI) |
 | Migrace účtu | `moved` → záznam se přesměruje na novou adresu (metadata zůstanou), dedup dle `id` | **zdarma** |
+| Ověření záznamu | úspěch → `last_verified_at`; selhání → `verify_failures` + `unverified_since` | **zdarma** |
 | Týdenní přírůstky | `followers_delta`/`activity_delta` = rozdíl proti `metrics_snapshot.json` (Skokani v Účtech) | **zdarma** |
 | CZ/SK filtr | lookup+statusy (zdarma), ne-CZ/SK účty přeskočí **před** AI | **zdarma** |
 | Kategorizace nových | lookup + posty + Claude (sdílí SYSTEM_PROMPT + caching) | ~$0.0079/účet |
@@ -267,6 +268,13 @@ pokrývá celé `FAMILIES`. Přeznačení stávajících: `--refamily` projede *
 účty v koši `lifestyle` (přebij přes `REFAMILY_FROM=a,b`) a přeurčí `family` +
 `categories`. Na rozdíl od `--retype` potřebuje i posty (rodina se řídí převažujícím
 tématem, ne biem), takže stojí jako nový účet (~$0.0079/účet).
+
+**Stáří dat** (`last_verified_at` / `unverified_since` / `verify_failures`):
+selhaný lookup neznamená „účet se nezměnil", ale „nevíme". Bez značky by zaniklý
+účet držel `followers` i `last_status_at` z posledního úspěšného běhu napořád
+a tvářil se jako čerstvé číslo — což zkresluje i souhrnné statistiky scény.
+Refresh proto u úspěchu zapíše datum ověření, u selhání načte počítadlo a datum
+prvního selhání (a při dalším úspěchu je zase smaže). Hodnoty samotné nepřepisuje.
 
 **Cache přeskočených** (`skipped_noncz.json`): ne-CZ/SK účty, které filtr zamítl,
 se uloží a příští běh je už vůbec nedotazuje (žádné opakované lookup+statusy).
