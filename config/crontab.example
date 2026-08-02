@@ -37,9 +37,9 @@
 
 # ────────────────── TÝDNĚ (pondělí) ─────────────
 # Jeden řádek = celý týdenní řetěz SEKVENČNĚ (weekly.sh):
-#   consolidate → discover → update → refresh-instances → cache-images
+#   consolidate → discover → update → refresh-instances → cache-images → check-sri
 # Pořadí i závislosti tak drží bez ohledu na délku kroků (žádné hádání mezer).
 # Start v 03:15 = až po pondělním collectu (02:15), aby konsolidace měla i neděli.
 # Selhání jednoho kroku nezastaví zbytek. Stavové značky → logs/weekly.log,
-# detaily → logs/{consolidate,discover,update,instances,images}.log.
+# detaily → logs/{consolidate,discover,update,instances,images,sri}.log.
 15 3 * * 1      /app/data/slonik/weekly.sh

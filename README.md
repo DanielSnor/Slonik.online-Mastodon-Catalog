@@ -23,6 +23,7 @@ bin/                    spustitelné skripty (entry points)
   consolidate_posts.rb    týdenní konsolidace → web/posts.json → upload na Surfer
   build_search.rb         přírůstkový index pro vyhledávání → web/search.json + users.json
   cache_images.rb         zmenšené kopie avatarů a log → web/avatars/, web/logos/
+  check_sri.rb            hlídá otisky (integrity) externích skriptů v index.html
   build_instances.rb      přehled instancí (v2/v1 /instance) → web/instances.json
   classify_instances.rb   zaměření instancí (joinmastodon + AI) → data/instance_topics.json
   deploy_web.rb           nahraje web bundle (web/) na Surfer (Files API)
@@ -92,6 +93,7 @@ Tenké wrappery — samy přejdou do kořene projektu a `update.sh` načte
 | `./classify-instances.sh [--rebuild\|--dry-run]` | zaměření instancí (joinmastodon + AI) → cache |
 | `./refresh-instances.sh` | build → classify → build v jednom (kategorie i pro nové instance) |
 | `./deploy-web.sh [--assets\|--data]` | nahraje web bundle na Surfer (na serveru) |
+| `./check-sri.sh` | ověří otisky externích skriptů v `index.html` |
 | `./test-surfer.sh` | ověření přístupu na Surfer |
 | `./test.sh [jmeno]` | testy čistých funkcí (bez sítě a produkčních dat) |
 
@@ -498,6 +500,27 @@ kontejner má vips 8.15.3 i ImageMagick 6.9.12; `Gemfile` nepřibyl.
 Měřeno v produkčním kontejneru: **60 avatarů 3,8 → 0,18 MB (95 %) za 17 s**,
 **37 log 13,7 → 0,11 MB (99 %) za 13 s**. Druhý běh nestahuje nic. Pro celý katalog
 čekej ~15 min a ~10 MB.
+
+## `check_sri.rb` — hlídač otisků externích skriptů
+
+```bash
+./check-sri.sh          # ověří web/index.html (běží i v týdenním řetězu)
+```
+
+`index.html` načítá jeden skript z cizí domény (měření návštěvnosti) a má u něj
+`integrity="sha384-…"`. Ten otisk je obrana proti podvržení — jenže má tichou
+stranu: **po upgradu té služby se obsah změní, otisk přestane sedět a prohlížeče
+skript prostě nespustí.** Web běží dál, jen se zastaví měření. Bez hlídače se to
+pozná až podle rovné čáry ve statistikách, klidně za měsíc.
+
+Skript stáhne každý externí zdroj s `integrity`, přepočítá otisk a porovná.
+Při neshodě vypíše ten aktuální k přepsání a skončí nenulově, takže to `weekly.sh`
+označí jako selhání. Hlásí i externí skript **bez** `integrity` — to je přesně
+stav, kvůli kterému otisky vznikly.
+
+Nedostupný host se hlásí jen jako varování, ne chyba: výpadek cizí služby není
+chyba našeho nasazení. `<link rel="canonical">` a `alternate` se ignorují — nic
+se z nich nestahuje.
 
 ## `build_instances.rb` — přehled instancí
 

@@ -11,13 +11,16 @@
 # → update (katalog z kandidátů) → refresh-instances (přehled/Oblast z katalogu)
 # → cache-images ÚPLNĚ NAKONEC: čte data.json i instances.json a zapisuje do nich
 #   cesty ke zmenšeným kopiím, takže musí za oběma.
+# check-sri je nezávislý hlídač: ověřuje, že otisk externího skriptu v index.html
+# pořád sedí. Po upgradu té služby přestane sedět a prohlížeče skript nespustí —
+# web běží dál, jen se tiše zastaví měření návštěvnosti. Tady se to pozná do týdne.
 set -uo pipefail
 cd "$(dirname "$0")"
 mkdir -p logs
 [ -t 1 ] || exec >> "logs/weekly.log" 2>&1
 
 echo "════════ týdenní běh start $(date -u '+%F %T UTC') ════════"
-for step in consolidate discover update refresh-instances cache-images; do
+for step in consolidate discover update refresh-instances cache-images check-sri; do
   echo "── $step ──"
   if "./$step.sh"; then
     echo "✅ $step hotovo"
