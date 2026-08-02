@@ -92,12 +92,28 @@ def nodeinfo(host)
   u = (URI.parse(href) rescue nil)
   return nil unless u&.host
 
+  # Kam ukazuje `href`, si určuje dotazovaná instance — je to obsah jejího
+  # /.well-known/nodeinfo. Bez omezení by nám libovolný server mohl říct „nodeinfo
+  # mám na https://neco.jineho/…" a nechat nás to stáhnout jeho jménem. Dokument
+  # musí být na témž hostu (nebo jeho subdoméně), jinak ho ignorujeme.
+  unless same_site?(u.host, host)
+    log("  ⚠️  #{host}: nodeinfo odkazuje jinam (#{u.host}) → ignoruji")
+    return nil
+  end
+
   path = u.path
   path += "?#{u.query}" if u.query
   _, ni, = API.get(u.host, path)
   ni.is_a?(Hash) ? ni : nil
 rescue StandardError
   nil
+end
+
+# Je `target` tentýž host jako `origin`, nebo jeho subdoména?
+def same_site?(target, origin)
+  t = target.to_s.downcase.sub(/\.\z/, "")
+  o = origin.to_s.downcase.sub(/\.\z/, "")
+  !t.empty? && !o.empty? && (t == o || t.end_with?(".#{o}"))
 end
 
 # NodeInfo → tvar jako Mastodon v2/v1 (jen pole, která build() čte).
