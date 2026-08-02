@@ -747,9 +747,10 @@
   }
 
   function instanceAvatar(i) {
-    if (i.thumbnail) {
+    var logo = safeUrl(i.thumbnail);
+    if (logo) {
       var img = document.createElement('img');
-      img.className = 'inst-logo'; img.src = i.thumbnail; img.alt = ''; img.loading = 'lazy';
+      img.className = 'inst-logo'; img.src = logo; img.alt = ''; img.loading = 'lazy';
       img.onerror = function () {
         var fb = instanceFallback(i); img.replaceWith(fb);
       };
@@ -1015,7 +1016,7 @@
 
     var a = document.createElement('a');
     a.className = 'link-title';
-    a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    setHref(a, l.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
     a.textContent = l.title;
     card.appendChild(a);
 
@@ -1332,7 +1333,7 @@
 
     var avatarLink = document.createElement('a');
     avatarLink.className = 'post-avatar-link';
-    avatarLink.href = profileUrl;
+    setHref(avatarLink, profileUrl);
     avatarLink.target = '_blank';
     avatarLink.rel = 'noopener';
     avatarLink.title = t('profile_title');
@@ -1343,7 +1344,7 @@
     hbody.className = 'post-head-body';
     var author = document.createElement('a');
     author.className = 'post-author';
-    author.href = profileUrl;
+    setHref(author, profileUrl);
     author.target = '_blank';
     author.rel = 'noopener';
     author.title = t('profile_title');
@@ -1433,7 +1434,7 @@
     if (p.url) {
       var open = document.createElement('a');
       open.className = 'post-open';
-      open.href = p.url;
+      setHref(open, p.url);
       open.target = '_blank';
       open.rel = 'noopener';
       open.textContent = '↗ ' + t('post_open');
@@ -2109,7 +2110,7 @@
 
     var handle = document.createElement('a');
     handle.className = 'card-handle';
-    handle.href = rec.profile_url;
+    setHref(handle, rec.profile_url);
     handle.target = '_blank';
     handle.rel = 'noopener';
     handle.textContent = '@' + rec.id;
@@ -2124,7 +2125,10 @@
 
     // Účet mimo katalog (z vyhledávání) nemá detail → klik vede na profil.
     if (rec._external) {
-      card.addEventListener('click', function () { window.open(rec.profile_url, '_blank', 'noopener'); });
+      card.addEventListener('click', function () {
+        var u = safeUrl(rec.profile_url);
+        if (u) window.open(u, '_blank', 'noopener');
+      });
     } else {
       card.addEventListener('click', function () { openModal(rec); });
       card.addEventListener('keydown', function (e) {
@@ -2139,9 +2143,10 @@
   function buildAvatar(rec, cls) {
     var avatar = document.createElement('div');
     avatar.className = cls;
-    if (rec.avatar) {
+    var avatarUrl = safeUrl(rec.avatar);
+    if (avatarUrl) {
       var img = document.createElement('img');
-      img.src = rec.avatar;
+      img.src = avatarUrl;
       img.alt = '';
       img.loading = 'lazy';
       img.onerror = function () { avatar.classList.add('avatar-fallback'); img.remove(); };
@@ -2322,8 +2327,13 @@
   }
 
   function openEmbedModal(postUrl) {
-    var embedUrl = postUrl.replace(/\/?$/, '') + '/embed';
-    var statusId = postUrl.replace(/\/$/, '').split('/').pop();
+    // Adresa postu je z cizí instance — bez kontroly by šlo do iframe podstrčit
+    // cokoli (a `sandbox` má kvůli funkčnosti embedu allow-scripts+same-origin).
+    var base = safeUrl(postUrl);
+    if (!base) return;
+
+    var embedUrl = base.replace(/\/?$/, '') + '/embed';
+    var statusId = base.replace(/\/$/, '').split('/').pop();
     embedModalEl.innerHTML = '';
     var wrap = document.createElement('div');
     wrap.className = 'embed-modal-inner';
@@ -2419,7 +2429,7 @@
     hn.textContent = rec.display_name;
     var hh = document.createElement('a');
     hh.className = 'modal-handle';
-    hh.href = rec.profile_url;
+    setHref(hh, rec.profile_url);
     hh.target = '_blank';
     hh.rel = 'noopener';
     hh.textContent = '@' + rec.id;
@@ -2468,7 +2478,7 @@
     actions.className = 'modal-actions';
     var profile = document.createElement('a');
     profile.className = 'btn btn-primary';
-    profile.href = rec.profile_url;
+    setHref(profile, rec.profile_url);
     profile.target = '_blank';
     profile.rel = 'noopener';
     profile.textContent = t('modal_open');
@@ -2477,7 +2487,7 @@
     follow.className = 'btn btn-ghost';
     // Odkaz vede na profil účtu — Mastodon tam ukáže dialog „Sledovat", který
     // návštěvníka nechá zadat VLASTNÍ instanci (ne přihlášení na zpravobot.news).
-    follow.href = rec.profile_url;
+    setHref(follow, rec.profile_url);
     follow.target = '_blank';
     follow.rel = 'noopener';
     follow.title = t('modal_follow_title');
@@ -2593,6 +2603,25 @@
       walkPostNodes(node, el);
       dest.appendChild(el);
     });
+  }
+
+  // ========================================================
+  // Adresy z cizích dat
+  // ========================================================
+  // profile_url, post.url, avatar i thumbnail pocházejí z odpovědi cizí instance,
+  // tedy z pole, jehož obsah si určuje ten server. Přiřadit `javascript:...` do
+  // .href znamená, že se to při kliknutí spustí. Sanitizér obsahu příspěvku tuhle
+  // kontrolu dělá (walkPostNodes), přímá přiřazení ji obcházela.
+  function safeUrl(u) {
+    return /^https?:\/\//i.test(String(u == null ? '' : u)) ? String(u) : '';
+  }
+
+  // Nastaví href jen u použitelné adresy; jinak href vůbec nevznikne (prvek
+  // zůstane, ale neodkazuje nikam — lepší než odkaz vedoucí na aktuální stránku).
+  function setHref(el, u) {
+    var safe = safeUrl(u);
+    if (safe) el.href = safe; else el.removeAttribute('href');
+    return !!safe;
   }
 
   // ========================================================
