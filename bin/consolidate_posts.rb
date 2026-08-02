@@ -141,8 +141,11 @@ def eng(p)      = p["engagement"] || ((p["reblogs_count"] || 0) + (p["favourites
 def reblogs(p)  = p["reblogs_count"] || 0
 def favs(p)     = p["favourites_count"] || 0
 
+# Vrací `max` nejvyšších podle bloku, sestupně. `max_by(n)` je O(n log max),
+# kdežto sort_by.reverse.first(max) seřadí celý týden (tisíce postů) jen proto,
+# aby se vzalo padesát — a děje se to šestkrát za běh.
 def top_by(posts, max, &block)
-  posts.sort_by(&block).reverse.first(max)
+  posts.max_by(max, &block)
 end
 
 # Skokani týdne — posty, které překonaly vlastní průměr účtu, dvěma metrikami:
@@ -171,12 +174,12 @@ def score_risers(posts)
 end
 
 def risers_absolute(scored, max)
-  scored.sort_by { |p| p["riser_score"] }.reverse.first(max)
+  scored.max_by(max) { |p| p["riser_score"] }
 end
 
 def risers_ratio(scored, max)
   scored.select { |p| eng(p) >= RISER_RATIO_MIN_ENG }
-        .sort_by { |p| p["riser_ratio"] }.reverse.first(max)
+        .max_by(max) { |p| p["riser_ratio"] }
 end
 
 # ---------------------------------------------------------------------------
@@ -228,7 +231,7 @@ def main
     "top_by_engagement" => top_by(posts, SECTION_MAX) { |p| eng(p) },
     "top_by_reblogs"    => top_by(posts, SECTION_MAX) { |p| reblogs(p) },
     "top_by_favourites" => top_by(posts, SECTION_MAX) { |p| favs(p) },
-    "top_by_date"       => posts.sort_by { |p| p["created_at"].to_s }.reverse.first(SECTION_MAX),
+    "top_by_date"       => top_by(posts, SECTION_MAX) { |p| p["created_at"].to_s },
     "risers_absolute"   => risers_absolute(scored, SECTION_MAX),
     "risers_ratio"      => risers_ratio(scored, SECTION_MAX),
   }
