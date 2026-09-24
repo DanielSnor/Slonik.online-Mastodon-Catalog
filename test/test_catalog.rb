@@ -108,3 +108,25 @@ class TestCatalogHelpers < Minitest::Test
     assert_same Catalog::PUBLIC_KEYS, PUBLIC_KEYS
   end
 end
+
+# Pixelfed `last_status_at` nevrací vůbec (nil i při stovkách postů), takže jeho
+# účty platily za „nikdy nepsal" a v Účtech se neukázaly, i když týdně přidávaly
+# příspěvky (24. 9. 2026: 11 účtů z pixelfed.cz, 2 s posts_week > 0).
+class TestInferredLastStatus < Minitest::Test
+  TODAY = Date.new(2026, 9, 24)
+
+  def test_missing_date_with_new_posts_means_posted_today
+    assert_equal "2026-09-24", inferred_last_status({ "last_status_at" => nil }, 5, today: TODAY)
+  end
+
+  def test_missing_date_without_new_posts_stays_unknown
+    assert_nil inferred_last_status({ "last_status_at" => nil }, 0, today: TODAY)
+    assert_nil inferred_last_status({ "last_status_at" => nil }, nil, today: TODAY)
+    assert_nil inferred_last_status({ "last_status_at" => nil }, -3, today: TODAY), "smazané posty nejsou aktivita"
+  end
+
+  def test_api_date_always_wins
+    assert_nil inferred_last_status({ "last_status_at" => "2026-09-01T00:00:00.000Z" }, 5, today: TODAY),
+               "Mastodon datum dodá, dopočet se nesmí plést do cesty"
+  end
+end

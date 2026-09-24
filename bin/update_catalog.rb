@@ -256,6 +256,9 @@ def refresh_record(rec, snapshot = nil)
   rec["mastodon_id"] ||= acct["id"]
   # Aktivita pro frontend filtr „jen aktivní" — obnovuje se každý běh.
   rec["last_status_at"] = acct["last_status_at"][0, 10] if acct["last_status_at"]
+  # Pixelfed `last_status_at` nevrací vůbec (nil i při stovkách postů) → jeho
+  # účty platily za „nikdy nepsal" a v Účtech se neukázaly. Dopočítá se níže
+  # z přírůstku příspěvků, až je znám (viz inferred_last_status).
   # Skutečný bot příznak (autoritativní) — umožní vyřadit boty, co propustila discovery.
   rec["bot"] = acct["bot"] ? true : false
 
@@ -285,7 +288,19 @@ def refresh_record(rec, snapshot = nil)
     end
     snapshot[id] = { "followers" => cur_f, "statuses" => cur_s, "at" => now.iso8601 } if cur_f || cur_s
   end
+  inferred = inferred_last_status(acct, rec["activity_delta"])
+  rec["last_status_at"] = inferred if inferred
   rec
+end
+
+# Datum posledního příspěvku, když ho API neposkytne (Pixelfed): přibyly-li od
+# minulého snapshotu příspěvky, poslední byl nejpozději dnes. Vrací řetězec
+# data, nebo nil (API datum má, nebo nic nepřibylo → nechat, co je).
+def inferred_last_status(acct, activity_delta, today: Date.today)
+  return nil if acct["last_status_at"]
+  return nil unless activity_delta.to_i.positive?
+
+  today.to_s
 end
 
 # Počet dní od posledního příspěvku, nebo nil (účet nikdy nic nepublikoval —

@@ -9,8 +9,16 @@
 # Tip: přidej účty, které sledují hodně reálných CZ/SK lidí (kurátory, hashtag
 # boty, výrazné osobnosti). Hloubka je 1 úroveň, boti se vyřadí, dedup automatický.
 
+# Pozn.: sledující jsou z většiny čtenáři — z aktivních lidí, kteří katalogu
+# chyběli 24. 9. 2026, jich sledující top účtů zachytili 12 %. Hlavní zdroj
+# skrytých pisatelů jsou lokální timeline (users.json); seedy doplňují Čechy
+# na cizích instancích, kam timeline nedosáhnou. Brána aktivity je v discovery.
+# prahou@merveilles.town má seznam sledujících skrytý → jako seed nefunguje.
 zpravobot@zpravobot.news       followers
 danielsnor@mastodon.social     followers
 medvidekpu@mastodon.social     followers
-igisho@rockosbasilisk.com      followers
 xChaos@f.cz                    followers
+sesivany@vivaldi.net           followers
+marcel_kolaja@mastodon.pirati.cz  followers
+OliKockova@cztwitter.cz        followers
+nolog@witter.cz                followers

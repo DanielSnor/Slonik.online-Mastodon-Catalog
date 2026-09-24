@@ -17,7 +17,7 @@ Vzniklo jako PoC průzkum (5 fází). Historické artefakty (`poc_report.md`,
 ```
 bin/                    spustitelné skripty (entry points)
   run_tests.rb            spouštěč testů (každý soubor ve vlastním procesu)
-  discover_accounts.rb    objevování účtů ze sociálního grafu + directory
+  discover_accounts.rb    objevování účtů ze sociálního grafu + directory + timeline
   update_catalog.rb       inkrementální aktualizace katalogu (AI jen pro nové)
   collect_posts.rb        denní sběr postů → data/posts_YYYY_Www.jsonl
   consolidate_posts.rb    týdenní konsolidace → web/posts.json → upload na Surfer
@@ -216,12 +216,23 @@ collect_posts.rb (denně)  →  consolidate_posts.rb (Po)  (posty: žebříčky)
 
 ## `discover_accounts.rb` — objevování účtů
 
-Kandidáti se sbírají ze **dvou zdrojů** (slévají se + dedup):
+Kandidáti se sbírají ze **tří zdrojů** (slévají se + dedup):
 
 1. **Sociální graf seedů** (`seeds.txt`) — `followers`/`following` seed účtů;
    reálné CZ/SK účty napříč libovolnými instancemi (i velkými, kde jsou Češi ~0,1 %).
 2. **Lokální directory CZ/SK instancí** (`instances.txt`) — `/api/v1/directory`
-   každé instance; zachytí i účty, které nikdo ze seed grafu nesleduje.
+   každé instance; zachytí i účty, které nikdo ze seed grafu nesleduje. Directory
+   ale vydá jen účty, které si viditelnost v adresáři samy zapnuly.
+3. **Lokální timeline CZ/SK instancí** — přes `web/users.json`, který každých 6 h
+   plní `build_search.rb` (účty mimo katalog mají `cat: false`). Jediný zdroj,
+   který zachytí lidi s vypnutou viditelností, jež nikdo ze seedů nesleduje
+   (24. 9. 2026: 181 aktivních lidí mimo katalog, 114 z nich na cztwitter.cz).
+
+Všechny zdroje procházejí **bránou aktivity** (`CANDIDATE_ACTIVE_DAYS`, default 90):
+kandidát musí mít příspěvek do N dní. Sledující velkých účtů jsou z většiny
+čtenáři a `update_catalog.rb` podle počtu postů nefiltruje — bez brány by každý
+mlčící účet z .cz/.sk instance prošel placenou AI kategorizací a nafoukl katalog.
+Pixelfed `last_status_at` nevrací, tam rozhoduje `statuses_count`.
 
 ```bash
 ruby bin/discover_accounts.rb        # → discovered_accounts.json
@@ -234,10 +245,12 @@ ruby bin/discover_accounts.rb        # → discovered_accounts.json
   Předvyplněno empiricky nalezenými CZ/SK instancemi; edituj volně (mrtvé/bez
   directory se jen přeskočí).
 
-- Hloubka 1 úroveň, bez CZ/SK filtru (jen vyřadí boty + dedup); filtruje až kategorizace.
+- Hloubka 1 úroveň, bez CZ/SK filtru (brána aktivity + vyřazení botů + dedup);
+  CZ/SK filtruje až kategorizace.
 - Stránkování: graf přes `Link` hlavičku, directory přes `offset`. Funguje **bez tokenu**.
-- ENV: `MASTODON_TOKEN`, `MASTODON_DELAY`, `MAX_PER_SEED` (2000),
-  `MAX_PER_DIRECTORY` (0 = bez limitu; jinak page-granulární ~80), `OUTPUT`.
+- ENV: `MASTODON_TOKEN`, `MASTODON_DELAY`, `MAX_PER_SEED` (2000; počítá jen účty,
+  které prošly bránou), `MAX_PER_DIRECTORY` (0 = bez limitu; jinak page-granulární ~80),
+  `OUTPUT`, `CANDIDATE_ACTIVE_DAYS` (90; 0 = bez brány), `USERS_PATH` (web/users.json).
 - Reálný výsledek seed grafu: **1192 unikátních ne-bot účtů** (461 z mastodon.social);
   directory CZ/SK instancí přidá další lokální účty.
 
