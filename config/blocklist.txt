@@ -24,3 +24,12 @@
 # nechcetubyt@witter.cz
 
 zdenekk@zpravobot.news   # převzato ze serveru (config/ z 15. 6. 2026); důvod nezaznamenán
+
+# 25. 9. 2026 — cizí jazyky propuštěné sítem diakritiky (š, ž, č mají i lotyština
+# a slovinština); síto opraveno commitem 5379e88, tohle uklízí, co už prošlo,
+# a brání návratu přes sociální graf.
+peteriskrisjanis@toot.lv      # lotyština
+ttrasuns@toot.lv              # lotyština
+DarkoVr@mastodon.social       # slovinština
+lapor@toot.si                 # slovinština
+OBELIKS@toot.si               # slovinština
