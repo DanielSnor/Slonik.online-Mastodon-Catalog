@@ -130,3 +130,38 @@ class TestInferredLastStatus < Minitest::Test
                "Mastodon datum dodá, dopočet se nesmí plést do cesty"
   end
 end
+
+# CZ/SK síto před placenou AI. Třetí stupeň (diakritika) pouštěl jazyky, které
+# mají š, ž, č taky — 25. 9. 2026 prošly dva lotyšské účty.
+class TestCzskSieve < Minitest::Test
+  def statuses(lang, text)
+    [{ "language" => lang, "content" => "<p>#{text}</p>" }] * 3
+  end
+
+  LATVIAN = "Šodien žurnālisti čakli strādā, šī ziņa ir čaklāka."
+  ENGLISH_WITH_CZECH = "Dnes píšu anglicky, ale říkám: děkuji, přátelé, žijeme."
+
+  def test_latvian_posts_with_shared_diacritics_are_rejected
+    refute looks_czsk?("toot.lv", { "note" => "" }, statuses("lv", LATVIAN))
+  end
+
+  def test_other_lookalike_languages_are_rejected_too
+    %w[lt et sl hr sr bs].each do |lang|
+      refute looks_czsk?("mastodon.social", { "note" => "" }, statuses(lang, LATVIAN)), lang
+    end
+  end
+
+  def test_czech_diacritics_still_rescue_an_account_posting_in_english
+    assert looks_czsk?("mastodon.social", { "note" => "" }, statuses("en", ENGLISH_WITH_CZECH))
+  end
+
+  def test_unknown_language_falls_back_to_diacritics
+    assert looks_czsk?("mastodon.social", { "note" => "" }, statuses(nil, ENGLISH_WITH_CZECH))
+    refute looks_czsk?("mastodon.social", { "note" => "" }, statuses(nil, "plain english only"))
+  end
+
+  def test_czsk_instance_and_czsk_language_win_regardless
+    assert looks_czsk?("witter.cz", { "note" => "" }, statuses("lv", LATVIAN))
+    assert looks_czsk?("mastodon.social", { "note" => "" }, statuses("sk", "Dobrý deň"))
+  end
+end

@@ -234,6 +234,11 @@ kandidát musí mít příspěvek do N dní. Sledující velkých účtů jsou z
 mlčící účet z .cz/.sk instance prošel placenou AI kategorizací a nafoukl katalog.
 Pixelfed `last_status_at` nevrací, tam rozhoduje `statuses_count`.
 
+CZ/SK filtr v `update_catalog.rb` (instance → jazyk postů cs/sk → česká/slovenská
+diakritika) má od 25. 9. 2026 zarážku: je-li dominantní jazyk postů lotyština,
+litevština, estonština, slovinština, chorvatština, srbština nebo bosenština
+(sdílejí š, ž, č), diakritika už účet nepustí.
+
 ```bash
 ruby bin/discover_accounts.rb        # → discovered_accounts.json
 ```

@@ -103,11 +103,18 @@ AICLIENT = AI.new(logger: method(:log))
 CZSK_INSTANCES = CatalogConfig.read_list("instances.txt", env_key: "INSTANCES_FILE").to_set
 NO_CZSK_FILTER = ARGV.include?("--no-czsk-filter")
 CZSK_DIACRITICS = /[ěščřžůňťďľĺŕ]/i
+# Jazyky, které sdílejí š, ž, č (a další háčky) s češtinou: síto diakritiky by
+# je pustilo do placené kategorizace a do katalogu (25. 9. 2026: dva lotyšské
+# účty). Když posty jasně mluví jedním z nich, diakritika už nerozhoduje.
+DIACRITICS_LOOKALIKE_LANGS = %w[lv lt et sl hr sr bs].to_set
 STATS = Hash.new(0)
 
 def looks_czsk?(instance, acct, statuses)
   return true if instance.to_s.end_with?(".cz", ".sk") || CZSK_INSTANCES.include?(instance)
-  return true if %w[cs sk].include?(MastodonAPI.dominant_language(statuses))
+
+  dom = MastodonAPI.dominant_language(statuses)
+  return true if %w[cs sk].include?(dom)
+  return false if DIACRITICS_LOOKALIKE_LANGS.include?(dom)
 
   text = MastodonAPI.strip_html(acct["note"].to_s + " " + statuses.map { |s| s["content"] }.join(" "))
   text.scan(CZSK_DIACRITICS).size >= 3
