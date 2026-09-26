@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy webu z TEST serveru na Surfer (přes Files API, stejně jako upload JSON).
-# Spouštěj na serveru, kde je config.env se SURFER_URL/SURFER_TOKEN.
+# Spouštěj na serveru, kde je config.env se SURFER_URL a přihlášením (SURFER_USERNAME + SURFER_PASSWORD).
 #
 # Použití:
 #   ./deploy-web.sh             # celý bundle (frontend + data.json + posts.json)

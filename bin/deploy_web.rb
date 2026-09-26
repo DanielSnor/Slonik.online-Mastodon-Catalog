@@ -5,8 +5,8 @@
 # bin/deploy_web.rb — nahraje web bundle (web/) na Surfer.
 #
 # Používá STEJNÝ způsob jako upload JSON v aplikaci: Surfer.upload z lib/config
-# (Files API: POST /api/files/<name>?access_token=…&newFilePath=<name>, multipart).
-# Spouští se na TEST serveru (kde je config.env se SURFER_URL/SURFER_TOKEN).
+# (Files API: POST /api/files/<name>, multipart; přihlášení v lib/config.rb).
+# Spouští se na serveru (kde je config.env se SURFER_URL a přihlášením).
 #
 # Použití:
 #   ruby bin/deploy_web.rb            # celý bundle (frontend + data.json + posts.json)
@@ -14,7 +14,7 @@
 #   ruby bin/deploy_web.rb --data     # jen data.json + posts.json
 #   ruby bin/deploy_web.rb --dry-run  # jen vypíše, co by nahrál (nevyžaduje Surfer)
 #
-# ENV: SURFER_URL, SURFER_TOKEN, SURFER_REMOTE_DIR (viz config.env).
+# ENV: SURFER_URL, SURFER_USERNAME + SURFER_PASSWORD (nebo SURFER_TOKEN), SURFER_REMOTE_DIR (viz config.env).
 # =============================================================================
 
 require_relative "../lib/config"
@@ -36,7 +36,7 @@ def log(msg)
 end
 
 unless DRY || Surfer.configured?
-  abort("❌ Surfer není nakonfigurován (SURFER_URL/SURFER_TOKEN v config.env)")
+  abort("❌ Surfer není nakonfigurován (SURFER_URL a SURFER_USERNAME + SURFER_PASSWORD v config.env)")
 end
 
 dir = ENV["SURFER_REMOTE_DIR"].to_s

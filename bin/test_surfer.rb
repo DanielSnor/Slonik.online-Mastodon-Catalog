@@ -5,19 +5,20 @@
 # test_surfer.rb — ověření přístupu na Surfer (Cloudron) přes jeho Files API.
 #
 # Surfer NEpoužívá WebDAV. Upload je:
-#   POST /api/files/<remote>?access_token=TOKEN&newFilePath=<remote>
+#   POST /api/files/<remote>   (přihlášení jako lib/config.rb: heslo, jinak token)
 #   Content-Type: multipart/form-data, pole "file". Úspěch = HTTP 201.
 #
 # Test:
 #   1. POST nahraje testovací soubor (mastokatalog_test.txt)
 #   2. GET  ověří, že je veřejně dostupný a obsah sedí
-#   3. DELETE uklidí (Surfer Files API: DELETE /api/files/<remote>?access_token=…)
+#   3. DELETE uklidí (Surfer Files API: DELETE /api/files/<remote>)
 #
 # Spuštění:
 #   ruby test_surfer.rb
 #   ruby test_surfer.rb --keep     # nemazat testovací soubor
 #
-# Credentials z config.env (SURFER_URL / SURFER_TOKEN / SURFER_REMOTE_DIR).
+# Credentials z config.env (SURFER_URL, SURFER_USERNAME + SURFER_PASSWORD nebo
+# SURFER_TOKEN, SURFER_REMOTE_DIR).
 # =============================================================================
 
 require "net/http"
@@ -34,20 +35,16 @@ def die(msg)
 end
 
 base  = ENV["SURFER_URL"].to_s.chomp("/")
-token = ENV["SURFER_TOKEN"].to_s
 die("SURFER_URL není nastaven. Vyplň config.env.") if base.empty?
-die("SURFER_TOKEN není nastaven. Vyplň config.env (Surfer access_token).") if token.empty?
+die("Chybí přihlášení: SURFER_USERNAME + SURFER_PASSWORD (Surfer 7) nebo SURFER_TOKEN. Vyplň config.env.") unless Surfer.configured?
 
-remote_dir = ENV["SURFER_REMOTE_DIR"].to_s.gsub(%r{\A/+|/+\z}, "")
-remote = remote_dir.empty? ? TEST_NAME : "#{remote_dir}/#{TEST_NAME}"
-remote_enc = remote.split("/").map { |s| URI.encode_www_form_component(s) }.join("/")
-
-api = URI("#{base}/api/files/#{remote_enc}" \
-          "?access_token=#{URI.encode_www_form_component(token)}" \
-          "&newFilePath=#{URI.encode_www_form_component(remote)}")
+remote = Surfer.remote_path(TEST_NAME)
+remote_enc = Surfer.encode_remote(remote)
+api = Surfer.api_uri(remote, "newFilePath" => remote)
 public_url = URI("#{base}/#{remote_enc}")
 
 puts "Surfer:       #{base}"
+puts "Přihlášení:   #{Surfer.password? ? "heslo (#{ENV["SURFER_USERNAME"]})" : 'token'}"
 puts "Cílový soubor: /#{remote}"
 puts "Veřejná URL:  #{public_url}"
 puts "------------------------------------------------------------"
@@ -69,7 +66,7 @@ body << "Content-Type: text/plain\r\n\r\n"
 body << TEST_BODY
 body << "\r\n--#{boundary}--\r\n"
 
-post = Net::HTTP::Post.new(api)
+post = Surfer.authorize(Net::HTTP::Post.new(api))
 post["Content-Type"] = "multipart/form-data; boundary=#{boundary}"
 post["User-Agent"] = "mastokatalog-test/1.0"
 post.body = body
@@ -81,7 +78,7 @@ end
 code = resp.code.to_i
 puts "1) POST → HTTP #{resp.code}"
 if code == 401 || code == 403
-  die("#{code} — neplatný SURFER_TOKEN nebo chybějící práva.")
+  die("#{code} — Surfer odmítl přihlášení (#{Surfer.password? ? 'SURFER_USERNAME/SURFER_PASSWORD' : 'SURFER_TOKEN -- Surfer 7 tokeny nebere'}) nebo chybí práva.")
 elsif code == 400
   die("400 — Surfer odmítl požadavek: #{resp.body.to_s[0, 160]}")
 elsif code == 404
@@ -104,7 +101,7 @@ end
 if KEEP
   puts "3) DELETE přeskočeno (--keep). Soubor zůstává: #{public_url}"
 else
-  del = Net::HTTP::Delete.new(URI("#{base}/api/files/#{remote_enc}?access_token=#{URI.encode_www_form_component(token)}"))
+  del = Surfer.authorize(Net::HTTP::Delete.new(Surfer.api_uri(remote)))
   del["User-Agent"] = "mastokatalog-test/1.0"
   begin
     resp = http_for(api).request(del)

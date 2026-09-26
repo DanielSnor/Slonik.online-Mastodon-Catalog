@@ -11,7 +11,7 @@
 # Cestu ke configu lze přepsat přes ENV CONFIG_PATH. Pokud soubor neexistuje,
 # loader tiše nic neudělá (skripty fungují i čistě z ENV).
 #
-# BEZPEČNOST: config.env obsahuje tajemství (SURFER_TOKEN, …) → patří do
+# BEZPEČNOST: config.env obsahuje tajemství (SURFER_PASSWORD, SURFER_TOKEN, …) → patří do
 # .gitignore, NIKDY se necommituje. Šablona je config.env.example.
 
 require "net/http"
@@ -72,11 +72,15 @@ end
 # ---------------------------------------------------------------------------
 # Sdílený upload na Surfer (Cloudron Files API) — používá consolidate i update.
 #
-#   POST /api/files/<remote>?access_token=TOKEN&newFilePath=<remote>
+#   POST /api/files/<remote>
 #   Content-Type: multipart/form-data, pole "file". Úspěch = HTTP 2xx (typicky 201).
 #
 # Konfigurace (config.env / ENV):
-#   SURFER_URL, SURFER_TOKEN, SURFER_REMOTE_DIR (prázdné = root).
+#   SURFER_URL, SURFER_REMOTE_DIR (prázdné = root) a přihlášení:
+#   SURFER_USERNAME + SURFER_PASSWORD -- Surfer 7 (od 26. 9. 2026 všechny naše):
+#     jméno z Cloudronu a heslo pro aplikace, posílá se jako HTTP Basic;
+#   SURFER_TOKEN -- Surfer 6 a starší (?access_token=); Surfer 7 ho odmítne 401.
+#   Jsou-li vyplněné obě, platí heslo.
 #
 # Vrací :ok / :skipped / :failed. Logování přes blok (volitelný), aby si každý
 # skript mohl použít svůj log().
@@ -128,7 +132,24 @@ module Surfer
   module_function
 
   def configured?
-    !ENV["SURFER_URL"].to_s.empty? && !ENV["SURFER_TOKEN"].to_s.empty?
+    !ENV["SURFER_URL"].to_s.empty? && (password? || !ENV["SURFER_TOKEN"].to_s.empty?)
+  end
+
+  def password?
+    !ENV["SURFER_USERNAME"].to_s.empty? && !ENV["SURFER_PASSWORD"].to_s.empty?
+  end
+
+  # Adresa API pro vzdálenou cestu; token jen tam, kde se nepřihlašuje heslem.
+  def api_uri(remote, extra = {})
+    params = password? ? {} : { "access_token" => ENV["SURFER_TOKEN"].to_s }
+    params = params.merge(extra)
+    query = params.empty? ? "" : "?#{URI.encode_www_form(params)}"
+    URI("#{ENV["SURFER_URL"].to_s.chomp("/")}/api/files/#{encode_remote(remote)}#{query}")
+  end
+
+  def authorize(req)
+    req.basic_auth(ENV["SURFER_USERNAME"].to_s, ENV["SURFER_PASSWORD"].to_s) if password?
+    req
   end
 
   # Složí vzdálenou cestu: SURFER_REMOTE_DIR / [subdir] / jméno souboru.
@@ -148,18 +169,13 @@ module Surfer
   def upload(path, logger: nil, subdir: nil, quiet: false)
     say = ->(m) { logger&.call(m) }
     unless configured?
-      say.call("  ℹ️  SURFER_URL/SURFER_TOKEN nenastaveny → upload přeskočen (#{path})")
+      say.call("  ℹ️  SURFER_URL nebo přihlášení (SURFER_USERNAME + SURFER_PASSWORD) nenastaveno → upload přeskočen (#{path})")
       return :skipped
     end
 
     base  = ENV["SURFER_URL"].to_s.chomp("/")
-    token = ENV["SURFER_TOKEN"].to_s
     remote = remote_path(File.basename(path), subdir: subdir)
-    remote_enc = encode_remote(remote)
-
-    uri = URI("#{base}/api/files/#{remote_enc}" \
-              "?access_token=#{URI.encode_www_form_component(token)}" \
-              "&newFilePath=#{URI.encode_www_form_component(remote)}")
+    uri = api_uri(remote, "newFilePath" => remote)
 
     boundary = "----MastoKatalog#{rand(10**16)}"
     preamble = +"--#{boundary}\r\n"
@@ -168,7 +184,7 @@ module Surfer
     epilogue = "\r\n--#{boundary}--\r\n"
 
     body = MultipartStream.new(preamble, path, epilogue)
-    req = Net::HTTP::Post.new(uri)
+    req = authorize(Net::HTTP::Post.new(uri))
     req["Content-Type"] = "multipart/form-data; boundary=#{boundary}"
     req["User-Agent"] = "mastokatalog-upload/1.0"
     req.body_stream = body
@@ -199,16 +215,14 @@ module Surfer
     say = ->(m) { logger&.call(m) }
     return :skipped unless configured?
 
-    base   = ENV["SURFER_URL"].to_s.chomp("/")
-    token  = ENV["SURFER_TOKEN"].to_s
     remote = remote_path(name, subdir: subdir)
-    uri = URI("#{base}/api/files/#{encode_remote(remote)}?access_token=#{URI.encode_www_form_component(token)}")
+    uri = api_uri(remote)
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = (uri.scheme == "https")
     http.open_timeout = 15
     http.read_timeout = 60
-    resp = http.request(Net::HTTP::Delete.new(uri))
+    resp = http.request(authorize(Net::HTTP::Delete.new(uri)))
     code = resp.code.to_i
     return :ok if code.between?(200, 299)
     return :missing if code == 404

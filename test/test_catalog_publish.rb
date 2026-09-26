@@ -88,3 +88,44 @@ class TestSurferPaths < Minitest::Test
     end
   end
 end
+
+# Přihlášení k Surferu: Surfer 7 bere jen jméno + heslo pro aplikace (HTTP
+# Basic) a access token odmítne 401; heslo má přednost, token zůstává pro
+# Surfer 6.
+class TestSurferSignIn < Minitest::Test
+  KEYS = %w[SURFER_URL SURFER_USERNAME SURFER_PASSWORD SURFER_TOKEN SURFER_REMOTE_DIR].freeze
+
+  def with_env(values)
+    saved = KEYS.to_h { |k| [k, ENV[k]] }
+    KEYS.each { |k| ENV.delete(k) }
+    values.each { |k, v| ENV[k] = v }
+    yield
+  ensure
+    saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+  end
+
+  def test_password_goes_as_basic_without_token
+    with_env("SURFER_URL" => "https://slonik.online/", "SURFER_USERNAME" => "jana",
+             "SURFER_PASSWORD" => "heslo", "SURFER_TOKEN" => "stary") do
+      assert Surfer.configured?
+      uri = Surfer.api_uri("data.json", "newFilePath" => "data.json")
+      assert_equal "https://slonik.online/api/files/data.json?newFilePath=data.json", uri.to_s
+      req = Surfer.authorize(Net::HTTP::Post.new(uri))
+      assert_equal "Basic #{["jana:heslo"].pack('m0')}", req["Authorization"]
+    end
+  end
+
+  def test_token_alone_still_works_for_surfer_6
+    with_env("SURFER_URL" => "https://slonik.online", "SURFER_TOKEN" => "tok") do
+      assert Surfer.configured?
+      assert_equal "https://slonik.online/api/files/data.json?access_token=tok", Surfer.api_uri("data.json").to_s
+      assert_nil Surfer.authorize(Net::HTTP::Delete.new(Surfer.api_uri("data.json")))["Authorization"]
+    end
+  end
+
+  def test_a_username_without_password_is_no_sign_in
+    with_env("SURFER_URL" => "https://slonik.online", "SURFER_USERNAME" => "jana") do
+      refute Surfer.configured?
+    end
+  end
+end

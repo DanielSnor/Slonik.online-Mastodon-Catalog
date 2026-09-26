@@ -22,7 +22,8 @@
 #   RESCORE=0     vypne přeměření engagementu (viz níže); default zapnuto
 #   RESCORE_LIMIT max. počet přeměřených postů (0 = všechny; default 0)
 #   SURFER_URL    base URL Surferu (např. https://slonik.online)
-#   SURFER_TOKEN  Surfer access_token (Files API)
+#   SURFER_USERNAME + SURFER_PASSWORD  přihlášení k Surferu 7 (heslo pro aplikace);
+#                 SURFER_TOKEN jen pro Surfer 6 a starší
 #   SURFER_REMOTE_DIR  cílová podsložka na Surferu (default "" = root; např. "slonik-test")
 #   KEEP_JSONL=1  nemazat JSONL po konsolidaci
 # =============================================================================
@@ -359,7 +360,7 @@ def main
 
   # Cleanup JSONL jen pokud upload prošel (nebo nebyl konfigurován Surfer a KEEP_JSONL
   # není) A ZÁROVEŇ se povedl archiv — jinak by se syrový týden ztratil nadobro.
-  surfer_configured = !ENV["SURFER_URL"].to_s.empty? && !ENV["SURFER_TOKEN"].to_s.empty?
+  surfer_configured = Surfer.configured?
   if ENV["KEEP_JSONL"] == "1"
     log("ℹ️  KEEP_JSONL=1 → JSONL ponechán: #{INPUT_PATH}")
   elsif ARCHIVE && archived.nil?
